@@ -33,7 +33,7 @@ def loss(positions, env_map, k: int = 2) -> torch.Tensor:
 
     disp = dist_loss(positions)
     conn = connectivity_loss(positions, k, threshold)
-    return DIST_WEIGHT * disp + CONNECT_WEIGHT * conn
+    return - DIST_WEIGHT * disp + CONNECT_WEIGHT * conn
 
 
 # ---------------------------------------------------------------------------
