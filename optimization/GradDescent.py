@@ -1,7 +1,6 @@
 import torch
 from ObjectiveFunction import loss
-from map import Map
-from simulation.map import MapObject
+from ..simulation import Map
 import numpy as np
 
 # example map
