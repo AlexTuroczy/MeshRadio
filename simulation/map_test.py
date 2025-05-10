@@ -41,3 +41,22 @@ class MapTestCase(unittest.TestCase):
 
         for i in range(5):
             self.assertAlmostEqual(map.get_tank_altitude(i), i)
+
+    def test_get_tank_dict(self):
+        map = Map(10, 10, 5, (0,0), [(1,1.2), (2.4,2), (3,3), (4,4.1), (5,5)])
+
+        out = {0:(1,1.2), 1:(2.4,2), 2:(3,3), 3:(4,4.1), 4:(5,5)}
+
+        self.assertDictEqual(map.get_tank_pos_dict(), out)
+
+
+    def test_delete_and_add_tank(self):
+        map = Map(10, 10, 5, (0,0), [(1,1.2), (2.4,2), (3,3), (4,4.1), (5,5)])
+
+        map.set_tank_destroyed_or_missing(2)
+        out = {0:(1,1.2), 1:(2.4,2), 2:(4,4.1), 3:(5,5)}
+        self.assertDictEqual(map.get_tank_pos_dict(), out)
+
+        map.add_new_tank(3.3, 2.2)
+        out = {0:(1,1.2), 1:(2.4,2), 2:(4,4.1), 3:(5,5), 4:(3.3, 2.2)}
+        self.assertDictEqual(map.get_tank_pos_dict(), out)
