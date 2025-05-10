@@ -17,7 +17,12 @@ def main():
             env.set_tank_destroyed_or_missing(idx)
             print(f"Tank {idx} destroyed")
 
-    viz.init_live(click_kill_callback=kill_tank, hit_radius=2.0)
+    viz.init_live(
+    click_kill_callback=kill_tank,
+    hit_radius=2.0,
+    hit_image_path="images/angry_king.jpg",  # ← tweak the path
+    hit_image_zoom=0.4,
+)
 
     iters = 100
     for i in range(iters):

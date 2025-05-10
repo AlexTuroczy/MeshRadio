@@ -12,7 +12,7 @@ Extras
 • Runs in *interactive* (non‑blocking) mode so your simulation loop keeps
   executing while the figure is visible.
 • Click on a tank to trigger any user‑supplied callback (e.g. destroy it)
-  **and** show a short "hit" animation at the tank’s last position.
+  **and** show a short "hit" animation (either a fun PNG or a red X).
 • Call `viz.hold()` after your loop so the window stays open.
 
 Typical usage
@@ -23,7 +23,10 @@ Typical usage
 ...     env.set_tank_destroyed_or_missing(idx)
 ...     print(f"Tank {idx} destroyed!")
 >>>
->>> viz.init_live(click_kill_callback=kill_tank, hit_radius=2.0)
+>>> viz.init_live(click_kill_callback=kill_tank,
+...               hit_radius=2.0,
+...               hit_image_path="assets/angry_king.png",   # <‑‑ your PNG
+...               hit_image_zoom=0.35)                       # scale factor
 >>> for step in range(100):
 ...     ...  # your simulation logic
 ...     viz.render(env.get_state_dict())
@@ -36,6 +39,8 @@ import math
 from typing import Callable, Optional
 
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import matplotlib.offsetbox as ob
 import numpy as np
 
 # ---------------------------------------------------------------------
@@ -46,27 +51,41 @@ _AX: Optional[plt.Axes] = None
 _LATEST_STATE: Optional[dict] = None        # cache of most recent state
 _KILL_CB: Optional[Callable[[int], None]] = None  # callback on click
 _HIT_RADIUS: float = 2.0                    # hit‑box radius in map units
+_HIT_IMG: Optional[np.ndarray] = None       # loaded PNG for hit marker
+_HIT_IMG_ZOOM: float = 0.35                 # scale factor for OffsetImage
 
 # ---------------------------------------------------------------------
 # Internal helper: flashy hit‑marker animation -------------------------
 # ---------------------------------------------------------------------
 
-def _show_hit_marker(x: float, y: float, duration: float = 0.25):
-    """Draw a big red X for *duration* seconds, then remove it."""
+def _show_hit_marker(x: float, y: float, duration: float = 0.5):
+    """Draw either the custom PNG or a big red X for *duration* seconds."""
     if _AX is None:
         return
-    marker = _AX.scatter(
-        x,
-        y,
-        marker="x",
-        s=350,
-        linewidths=3,
-        color="red",
-        zorder=6,
-    )
-    _FIG.canvas.draw_idle()
-    plt.pause(duration)
-    marker.remove()
+
+    if _HIT_IMG is not None:
+        # Use the user's PNG
+        imagebox = ob.OffsetImage(_HIT_IMG, zoom=_HIT_IMG_ZOOM)
+        ab = ob.AnnotationBbox(imagebox, (x, y), frameon=False, zorder=6)
+        _AX.add_artist(ab)
+        _FIG.canvas.draw_idle()
+        plt.pause(duration)
+        ab.remove()
+    else:
+        # Fallback: red X marker
+        marker = _AX.scatter(
+            x,
+            y,
+            marker="x",
+            s=350,
+            linewidths=3,
+            color="red",
+            zorder=6,
+        )
+        _FIG.canvas.draw_idle()
+        plt.pause(duration)
+        marker.remove()
+
     _FIG.canvas.draw_idle()
 
 # ---------------------------------------------------------------------
@@ -107,23 +126,48 @@ def init_live(
     show_radius: bool = False,
     click_kill_callback: Optional[Callable[[int], None]] = None,
     hit_radius: float = 2.0,
+    hit_image_path: Optional[str] = None,
+    hit_image_zoom: float = 0.35,
 ):
-    """Prepare the live, non‑blocking visualisation."""
-    global _FIG, _AX, _KILL_CB, _HIT_RADIUS
+    """Prepare the live, non‑blocking visualisation.
+
+    Parameters
+    ----------
+    hit_image_path : str | None
+        Path to a PNG (or any format `matplotlib.image.imread` can read).
+        If provided, that image is popped up over a tank when it is hit.
+    hit_image_zoom : float
+        Scale factor for the PNG when displayed.
+    """
+    global _FIG, _AX, _KILL_CB, _HIT_RADIUS, _HIT_IMG, _HIT_IMG_ZOOM
 
     plt.ion()
 
     _FIG, _AX = plt.subplots(figsize=figsize)
     _FIG.canvas.manager.set_window_title("Mesh‑Radio Simulation")
 
-    # Store visual defaults directly on the axis
+    # Visual defaults stored on axis for convenience
     _AX._viz_cmap = cmap
     _AX._viz_link_colour = link_colour
     _AX._viz_show_radius = show_radius
 
+    # Interaction settings
     _KILL_CB = click_kill_callback
     _HIT_RADIUS = float(hit_radius)
 
+    # Load hit marker image if provided
+    if hit_image_path is not None:
+        try:
+            _HIT_IMG = mpimg.imread(hit_image_path)
+            _HIT_IMG_ZOOM = hit_image_zoom
+        except FileNotFoundError:
+            print(f"[viz] Could not find hit image at '{hit_image_path}'. "
+                  "Falling back to red X marker.")
+            _HIT_IMG = None
+    else:
+        _HIT_IMG = None
+
+    # Connect click handler (always; handler decides what to do)
     _FIG.canvas.mpl_connect("button_press_event", _on_click)
 
     _AX.set_aspect("equal")
