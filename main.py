@@ -1,4 +1,4 @@
-from optimization import GradDescent
+from optimization import Update
 from simulation import Map
 
 def main():
@@ -6,7 +6,7 @@ def main():
 
     env = Map(100, 100, 5, (0,0),[(1,1), (2,2), (3,3), (4,4), (5,5)])
     for i in range(iters):
-        next_positions = GradDescent.update(env)
+        next_positions = Update.update(env)
         env.set_pos_all_tanks(next_positions)
         print(f"Iteration {i}")
 

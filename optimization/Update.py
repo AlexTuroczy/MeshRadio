@@ -1,5 +1,5 @@
 import torch
-from optimization import ObjectiveFunction
+from optimization import Loss
 from simulation import Map
 import numpy as np
 
@@ -23,7 +23,7 @@ def update(env_map):
         # print("Hello")
         optimizer.zero_grad()       # clear previous gradients
 
-        l = ObjectiveFunction.loss(positions, env_map) # compute loss
+        l = Loss.loss(positions, env_map) # compute loss
         l.backward()             # backward pass (compute gradients)
         optimizer.step()            # update weights
 
