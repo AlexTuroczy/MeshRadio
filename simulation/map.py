@@ -175,12 +175,16 @@ class Map:
         pos2 = self.get_tank_pos(idx2)
         return utils.dist(pos1, pos2)
     
-    def tank_can_radio_location(self, idx: int, x_pos: float, y_pos: float):
+    def tank_can_radio_location(self, idx: int, x_pos: float, y_pos: float, visualization=False):
         if idx < 0 or idx >= self.nb_nodes:
             raise Exception("Index out of range.")
+        
+        eps = 0
+        if visualization:
+            eps = 1
 
         tank_pos = self.get_tank_pos(idx)
-        return utils.dist(tank_pos, (x_pos, y_pos)) < self.get_tank_radius(idx)
+        return utils.dist(tank_pos, (x_pos, y_pos)) < self.get_tank_radius(idx) + eps
     
     def get_tank_distance_from_hq(self, idx: int):
         if idx < 0 or idx >= self.nb_nodes:
@@ -261,8 +265,8 @@ class Map:
         for i in range(self.nb_nodes):
             for j in range(i + 1, self.nb_nodes):
                 if (
-                    self.tank_can_radio_location(i, *self.get_tank_pos(j))
-                    and self.tank_can_radio_location(j, *self.get_tank_pos(i))
+                    self.tank_can_radio_location(i, *self.get_tank_pos(j), visualization=True)
+                    and self.tank_can_radio_location(j, *self.get_tank_pos(i), visualization=True)
                 ):
                     links.append((i, j))
         return links
