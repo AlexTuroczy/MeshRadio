@@ -36,6 +36,8 @@ import math
 from typing import Callable, Optional
 
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('TkAgg')
 import numpy as np
 
 # ---------------------------------------------------------------------

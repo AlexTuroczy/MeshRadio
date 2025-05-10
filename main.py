@@ -15,6 +15,8 @@ def main():
         sigmas=[20,20]
     )
 
+    env.set_targets_all_tanks(0)
+
     # -------- callback that kills a tank in the environment ----------
     def kill_tank(idx: int):
         if idx < env.get_nb_tanks():

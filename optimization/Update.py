@@ -27,7 +27,7 @@ def update(env_map,k=3):
         # ---- clip AFTER the optimiser step, with no_grad ----
 
 
-        loss = Loss.dropout_loss(positions, env_map ,k=k)
+        loss = Loss.loss(positions, env_map ,k=k)
         loss.backward()
         optimizer.step()                      # gradient update
 

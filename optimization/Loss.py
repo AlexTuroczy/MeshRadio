@@ -1,3 +1,6 @@
+from csv import DictReader
+from typing import Dict
+
 import torch
 import numpy as np
 
@@ -6,6 +9,7 @@ import numpy as np
 # ---------------------------------------------------------------------------
 DIST_WEIGHT = 1.0          # encourages spatial dispersion / coverage
 CONNECT_WEIGHT = 1.3     # enforces k‑connectivity robustness
+TARGET_WEIGHT = 0.2
 
 # ---------------------------------------------------------------------------
 #  Public API
@@ -40,8 +44,9 @@ def loss(
 
     dispersion = dist_loss(positions)
     connectivity = connectivity_loss(positions, k, threshold)
+    target_seeking = target_seek_loss(positions, env_map.get_all_tank_targets())
 
-    return - DIST_WEIGHT * dispersion + CONNECT_WEIGHT * connectivity
+    return - DIST_WEIGHT * dispersion + CONNECT_WEIGHT * connectivity + TARGET_WEIGHT * target_seeking
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +96,13 @@ def connectivity_loss(
 
     return penalised.mean()
 
+def target_seek_loss(positions: torch.Tensor, targets: Dict[int, np.ndarray]):
+    tgts = torch.as_tensor(
+        np.array(list(targets.values()), dtype=np.float32),
+        dtype=torch.float32
+    )
+
+    return ((positions - tgts)**2).sum(dim=1).mean()
 
 def dropout_loss(positions, env_map, max_dropout: int = 2, probability_dropout: float = 0.1, k: int = 2) -> torch.Tensor:
     """Drops positions and recomputes loss with eliminated nodes"""
