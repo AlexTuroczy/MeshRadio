@@ -31,6 +31,8 @@ def main():
             20, 20,     # south‑west
         ],
     )
+    env.set_targets_all_tanks(0)
+    
     viz.init_live(figsize=(6, 6), show_radius=False)   # ← NEW
 
     for i in range(iters):
