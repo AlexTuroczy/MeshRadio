@@ -5,3 +5,4 @@ simulation/__pycache__/
 .idea/*
 /temp
 .vscode/
+optimization/__pycache__/
