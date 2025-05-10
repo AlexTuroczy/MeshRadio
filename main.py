@@ -10,12 +10,12 @@ def main():
         nb_nodes=6,
         hq_pos=(50, 50),                           # HQ dead‑centre
         init_positions=[                           # initial tank positions
-            (10, 10),
-            (15, 60),
-            (30, 80),
-            (60, 20),
-            (80, 75),
-            (45, 45),
+            (10.1, 10),
+            (10.05, 11),
+            (10.11, 12),
+            (10.3, 13),
+            (10.14, 14),
+            (10.08, 15),
         ],
         targets=[                                  # three targets
             (90, 10),

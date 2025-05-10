@@ -16,7 +16,7 @@ def update(env_map,k=3):
         dtype=torch.float32
     )
     positions.requires_grad = True
-    optimizer = torch.optim.SGD([positions], lr=0.01)  # using Stochastic Gradient Descent
+    optimizer = torch.optim.SGD([positions], lr=0.1)  # using Stochastic Gradient Descent
 
     map_bounds ={"x": env_map.x_size, "y": env_map.y_size}
     # Dummy input and target
@@ -27,7 +27,7 @@ def update(env_map,k=3):
         # ---- clip AFTER the optimiser step, with no_grad ----
 
 
-        loss = Loss.loss(positions, env_map ,k=k)
+        loss = Loss.dropout_loss(positions, env_map ,k=k)
         loss.backward()
         optimizer.step()                      # gradient update
 
