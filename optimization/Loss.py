@@ -5,7 +5,7 @@ import numpy as np
 #  Tunable weights for the composite objective
 # ---------------------------------------------------------------------------
 DIST_WEIGHT = 1.0          # encourages spatial dispersion / coverage
-CONNECT_WEIGHT = 1.3     # enforces k‑connectivity robustness
+CONNECT_WEIGHT = 1.5     # enforces k‑connectivity robustness
 
 # ---------------------------------------------------------------------------
 #  Public API

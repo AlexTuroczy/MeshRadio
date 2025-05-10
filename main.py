@@ -4,8 +4,14 @@ from optimization import Update
 def main():
     env = Map(
         100, 100, 6, (50, 50),
-        init_positions=[(10, 10), (15, 60), (30, 80),
-                        (60, 20), (80, 75), (45, 45)],
+        init_positions = [
+            (48, 50),
+            (51, 49),
+            (50.5, 52),
+            (49.5, 48),
+            (52, 51),
+            (47, 49),
+        ],
         targets=[(90, 10), (10, 90), (80, 50)],
         altitude_centers=[[20, 20], [70, 70], [40, 80]],
         sigmas=[20,20]
@@ -21,7 +27,7 @@ def main():
     click_kill_callback=kill_tank,
     hit_radius=2.0,
     hit_image_path="images/angry_king.jpg",  # ← tweak the path
-    hit_image_zoom=0.4,
+    hit_image_zoom=0.05,
 )
 
     iters = 100
