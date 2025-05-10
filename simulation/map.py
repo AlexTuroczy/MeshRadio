@@ -52,11 +52,11 @@ class Map:
             hq_pos: Tuple[float],
             init_positions: Optional[List[Tuple[float]]] = None,
             targets: Optional[List[Tuple[float]]] = None,
-            altitude_centers: Optional[List[List[float]]] = None
+            altitude_centers: Optional[List[List[float]]] = None,
+            sigmas: Optional[List[float]] = [1,1],
 ):
-        sigma_x = 1
-        sigma_y = 1
-        self.sigma = np.array([[sigma_x ** 2, 0], [0, sigma_y ** 2]])
+        if sigmas:
+            self.sigma = np.array([[sigmas[0] ** 2, 0], [0, sigmas[1] ** 2]])
         self.scale = 100
         self.x_size = map_x_size
         self.y_size = map_y_size
@@ -80,6 +80,7 @@ class Map:
         self.hq = MapObject(hq_pos[0], hq_pos[1])
 
         targets = []
+        self.targets = targets
         if targets:
             self.targets = [Target(x,y) for x,y in targets]
 
@@ -221,3 +222,44 @@ class Map:
         self.nodes.append(MiniTank(x_pos, y_pos, radar_radius=radius))
         self.nb_nodes += 1
     
+
+    # ---------------------------------------------------------------------
+    # NEW — inside class Map
+    # ---------------------------------------------------------------------
+    def _compute_links(self) -> list[tuple[int, int]]:
+        """
+        Undirected radio links between tanks.
+        Two tanks are considered ‘connected’ when both can hear each other.
+        """
+        links = []
+        for i in range(self.nb_nodes):
+            for j in range(i + 1, self.nb_nodes):
+                if (
+                    self.tank_can_radio_location(i, *self.get_tank_pos(j))
+                    and self.tank_can_radio_location(j, *self.get_tank_pos(i))
+                ):
+                    links.append((i, j))
+        return links
+
+    def get_state_dict(self) -> dict:
+        """
+        Roll‑up of everything that a renderer (or your RL/optimiser) might need.
+        Nothing here is a live object — it’s all plain data.
+        """
+        state = {
+            "map_size": (self.x_size, self.y_size),
+            "altitude": self.altitude.copy(),          # 2‑D numpy array (x, y)
+            "hq": tuple(self.hq.get_pos()),
+            "targets": [tuple(t.get_pos()) for t in self.targets],
+            "tanks": [
+                {
+                    "idx": i,
+                    "pos": tuple(node.get_pos()),
+                    "radius": node.get_radius(),
+                }
+                for i, node in enumerate(self.nodes)
+            ],
+            "links": self._compute_links(),            # list[(i, j), …]
+        }
+        return state
+    # ---------------------------------------------------------------------
