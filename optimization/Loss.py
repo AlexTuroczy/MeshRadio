@@ -95,3 +95,35 @@ def connectivity_loss(
     penalised = delta * mask.unsqueeze(1)  # broadcast (N,1) → (N,N)
 
     return penalised.mean()
+
+
+def dropout_loss(positions, env_map, max_dropout: int = 2, probability_dropout: float = 0.1, k: int = 2) -> torch.Tensor:
+    """Drops positions and recomputes loss with eliminated nodes"""
+
+    loss_term = 0
+
+    for depth in range(max_dropout):
+        for idx in adaptive_loops((depth,)):
+            all_indices = torch.arange(positions.size(0))
+            keep_indices = all_indices[~torch.isin(all_indices, idx)]
+
+            positions_dropped = positions[keep_indices]
+            loss_term += loss(positions_dropped, env_map, k) * (probability_dropout ** depth)
+    
+    return loss_term
+
+
+
+
+def adaptive_loops(bounds):
+    """
+    Simulates a dynamic number of nested for loops.
+
+    Args:
+        bounds (list or tuple): A list of integers, each representing the upper bound of a loop.
+
+    Yields:
+        tuple: The current index for each loop level.
+    """
+    for indices in np.ndindex(*bounds):
+        yield torch.tensor(indices)
