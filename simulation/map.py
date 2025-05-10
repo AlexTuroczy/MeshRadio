@@ -7,6 +7,7 @@ from utils import dist
 
 from random import randint
 import math
+import scipy
 
 class MapObject:
 
@@ -15,7 +16,7 @@ class MapObject:
         self.y_pos = y_pos
 
     def get_pos(self):
-        return self.x_pos, self.y_pos
+        return np.array([self.x_pos, self.y_pos])
     
     def set_pos(self, x: float, y: float):
         self.x_pos = x
@@ -29,7 +30,12 @@ class MiniTank(MapObject):
 
     def get_radius(self):
         return self.radar_radius
+    
 
+class MissingTank(MapObject):
+    def __init__(self, x_pos: float, y_pos: float, radar_radius: int):
+        super().__init__(x_pos, y_pos)
+    
 
 class Target(MapObject):
 
@@ -46,10 +52,18 @@ class Map:
             hq_pos: Tuple[float],
             init_positions: Optional[List[Tuple[float]]] = None,
             targets: Optional[List[Tuple[float]]] = None,
+            altitude_centers: Optional[List[List[float]]] = None
 ):
+        sigma_x = 1
+        sigma_y = 1
+        self.sigma = np.array([[sigma_x ** 2, 0], [0, sigma_y ** 2]])
+        self.scale = 100
         self.x_size = map_x_size
         self.y_size = map_y_size
-        self.altitude = np.zeros((map_x_size, map_y_size))
+        if altitude_centers:
+            self.altitude = self._generate_altitudes(altitude_centers)
+        else:
+            self.altitude = np.zeros((map_x_size, map_y_size))
 
         self.nb_nodes = nb_nodes
 
@@ -68,6 +82,23 @@ class Map:
         targets = []
         if targets:
             self.targets = [Target(x,y) for x,y in targets]
+
+    def _generate_altitudes(self, altitude_centers):
+        alt_matrix = np.zeros((self.x_size, self.y_size))
+        x_values, y_values = np.meshgrid(np.linspace(0, self.x_size, self.x_size), np.linspace(0, self.y_size, self.y_size))
+
+        for x in range(self.x_size):
+            for y in range(self.y_size):
+                alt_matrix[x, y] = self._evaluate_altitude(x, y, altitude_centers)
+        return alt_matrix
+
+    def _evaluate_altitude(self, x, y, altitude_centers):
+        sum = 0
+        for center in altitude_centers:
+            rv = scipy.stats.multivariate_normal(mean=center, cov=self.sigma)
+            altitude = rv.pdf(np.array([x, y])) * self.scale
+            sum += altitude
+        return sum
 
     def get_tank_pos(self, idx: int):
         if idx < 0 or idx >= self.nb_nodes:
@@ -123,7 +154,8 @@ class Map:
             raise Exception("Map position out of range")
         self.hq.set_pos(x, y)
 
-    def get_tank_distance(self, idx1, idx2):
+    def get_tank_distance(self, idx1: int, idx2: int):
+        """ Distance between 2 tanks """
         if idx1 < 0 or idx1 >= self.nb_nodes:
             raise Exception("Index out of range.")
         if idx2 < 0 or idx2 >= self.nb_nodes:
@@ -131,4 +163,57 @@ class Map:
         pos1 = self.get_tank_pos(idx1)
         pos2 = self.get_tank_pos(idx2)
         return dist(pos1, pos2)
+    
+    def tank_can_radio_location(self, idx: int, x_pos: float, y_pos: float):
+        if idx < 0 or idx >= self.nb_nodes:
+            raise Exception("Index out of range.")
+
+        tank_pos = self.get_tank_pos(idx)
+        return dist(tank_pos, (x_pos, y_pos)) < self.get_tank_radius(idx)
+    
+    def get_tank_distance_from_hq(self, idx: int):
+        if idx < 0 or idx >= self.nb_nodes:
+            raise Exception("Index out of range.")
+        pos1 = self.get_tank_pos(idx)
+        pos2 = self.get_hq_pos()
+        return dist(pos1, pos2)
+    
+    def get_targets_pos(self):
+        """ Get all target positions """
+        positions = []
+        for target in self.targets:
+            positions.append(target.get_pos())
+        return positions
+
+    def get_tank_distance_to_position(self, idx: int, x: float, y: float):
+        if idx < 0 or idx >= self.nb_nodes:
+            raise Exception("Index out of range.")
+        if x < 0 or x >= self.x_size:
+            raise Exception("Map position out of range")
+        if y < 0 or y >= self.y_size:
+            raise Exception("Map position out of range")
+        pos = self.get_tank_pos(idx)
+        return dist(pos, (x,y))
+
+    def get_nb_tanks(self):
+        return self.nb_nodes
+    
+    def get_tank_pos_dict(self):
+        tanks = {}
+        for idx, node in enumerate(self.nodes):
+            tanks[idx] = node.get_pos()
+
+        return tanks
+
+    def set_tank_destroyed_or_missing(self, idx: int):
+        if idx < 0 or idx >= self.nb_nodes:
+            raise Exception("Index out of range.")
+        self.nodes = [node for i, node in enumerate(self.nodes) if not i == idx]
+        self.nb_nodes -= 1
+
+    def add_new_tank(self, x_pos: float, y_pos: float, radius: Optional[float] = None):
+        if radius is None:
+            radius = DEFAULT_RADIO_RADIUS
+        self.nodes.append(MiniTank(x_pos, y_pos, radar_radius=radius))
+        self.nb_nodes += 1
     
