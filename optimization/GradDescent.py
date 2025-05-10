@@ -1,6 +1,6 @@
 import torch
 from ObjectiveFunction import loss
-from ..simulation import Map
+from MESHRADIO.simulation import Map
 import numpy as np
 
 # example map
