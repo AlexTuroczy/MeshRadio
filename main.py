@@ -1,49 +1,31 @@
-from optimization import Update
 from simulation import Map, viz
+from optimization import Update
 
 def main():
-    iters = 1000
-
     env = Map(
-        map_x_size=100,
-        map_y_size=100,
-        nb_nodes=6,
-        hq_pos=(50, 50),                           # HQ dead‑centre
-        init_positions=[                           # initial tank positions
-            (10.1, 10),
-            (10.05, 11),
-            (10.11, 12),
-            (10.3, 13),
-            (10.14, 14),
-            (10.08, 15),
-        ],
-        targets=[                                  # three targets
-            (90, 10),
-            (10, 90),
-            (80, 50),
-        ],
-        altitude_centers=[                         # three “hills”
-            [20, 20],     # south‑west
-            [70, 70],     # north‑east
-            [40, 80],     # north‑central
-        ],
-        sigmas=[                         # three “hills”
-            20, 20,     # south‑west
-        ],
+        100, 100, 6, (50, 50),
+        init_positions=[(10, 10), (15, 60), (30, 80),
+                        (60, 20), (80, 75), (45, 45)],
+        targets=[(90, 10), (10, 90), (80, 50)],
+        altitude_centers=[[20, 20], [70, 70], [40, 80]],
+        sigmas=[20,20]
     )
-    env.set_targets_all_tanks(0)
-    
-    viz.init_live(figsize=(6, 6), show_radius=False)   # ← NEW
-    k = 2
+
+    # -------- callback that kills a tank in the environment ----------
+    def kill_tank(idx: int):
+        if idx < env.get_nb_tanks():
+            env.set_tank_destroyed_or_missing(idx)
+            print(f"Tank {idx} destroyed")
+
+    viz.init_live(click_kill_callback=kill_tank, hit_radius=2.0)
+
+    iters = 100
     for i in range(iters):
-        next_positions = Update.update(env, k=k)
-        print(next_positions)
+        next_positions = Update.update(env)
         env.set_pos_all_tanks(next_positions)
-        env_state = env.get_state_dict()
-        viz.render(env_state)
+        viz.render(env.get_state_dict())
         print(f"Iteration {i}")
-    
-    # ------------- keep window alive -------------
+
     print("Simulation finished – close the window to exit.")
     viz.hold()
 
