@@ -1,14 +1,13 @@
 import torch
 from ObjectiveFunction import loss
-from map import Map
-from simulation.map import MapObject
+from simulation import Map
 import numpy as np
 
 # example map
 map = Map(10, 10, 5, (0,0), [(1,1), (2,2), (3,3), (4,4), (5,5)])
 
 
-def gradient_descent(env_map):
+def update(env_map):
 
     positions = torch.as_tensor(
         np.array(list(env_map.get_tank_positions().values()), dtype=np.float32),
