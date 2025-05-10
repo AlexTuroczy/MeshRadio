@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from simulation import altitude
 
 # ---------------------------------------------------------------------------
 #  Tunable weights for the composite objective
@@ -39,7 +40,7 @@ def loss(
     threshold = float(env_map.get_tank_radius(0))
 
     dispersion = dist_loss(positions)
-    connectivity = connectivity_loss(positions, k, threshold)
+    connectivity = connectivity_loss(positions, k, threshold, env_map)
 
     return - DIST_WEIGHT * dispersion + CONNECT_WEIGHT * connectivity
 
@@ -62,6 +63,7 @@ def connectivity_loss(
     positions: torch.Tensor,
     k: int,
     threshold: float,
+    env_map
 ) -> torch.Tensor:
     """Penalty for tanks that do **not** meet the *k*-neighbour requirement.
 
@@ -80,10 +82,14 @@ def connectivity_loss(
     deficient = deg < k               # boolean (N,)
     if not deficient.any():
         return positions.new_zeros(())
+    
+    elevations = torch.zeros(positions.shape[0])
+    for i in range(positions.shape[0]):
+        elevations[i] = env_map._evaluate_centers_torch(positions[i], env_map.altitude_centers)
 
     # 3) positive gaps beyond threshold (set diagonal gap to 0 so it NEVER
     #    pollutes the mean, even for deficient nodes)
-    delta = torch.relu(D - threshold)
+    delta = torch.relu(D - elevations*threshold)
     delta = delta.masked_fill(eye, 0.0)   # kill diagonal
 
     # 4) keep only deficient rows

@@ -8,6 +8,9 @@ from simulation import utils
 from random import randint
 import math
 import scipy
+from torch.distributions.multivariate_normal import MultivariateNormal
+import torch
+
 
 class MapObject:
 
@@ -107,6 +110,18 @@ class Map:
             altitude = rv.pdf(np.array([x, y])) * self.scale
             sum += altitude
         return sum
+    
+    def _evaluate_altitude_torch(self, pos, altitude_centers):
+
+        # Create the multivariate normal distribution
+        mvn = MultivariateNormal(loc=mean, covariance_matrix=cov)
+
+        sum = torch([0.0])
+        for center in altitude_centers:
+            mvn = MultivariateNormal(loc=torch.tensor(mean), covariance_matrix=torch.tensor(self.sigma))
+            altitude = torch.exp(mvn.log_prob(pos))
+            sum += altitude
+        return sum 
 
     def get_tank_pos(self, idx: int):
         if idx < 0 or idx >= self.nb_nodes:
