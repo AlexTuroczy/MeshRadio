@@ -123,7 +123,8 @@ class Map:
             raise Exception("Map position out of range")
         self.hq.set_pos(x, y)
 
-    def get_tank_distance(self, idx1, idx2):
+    def get_tank_distance(self, idx1: int, idx2: int):
+        """ Distance between 2 tanks """
         if idx1 < 0 or idx1 >= self.nb_nodes:
             raise Exception("Index out of range.")
         if idx2 < 0 or idx2 >= self.nb_nodes:
@@ -131,4 +132,36 @@ class Map:
         pos1 = self.get_tank_pos(idx1)
         pos2 = self.get_tank_pos(idx2)
         return dist(pos1, pos2)
+    
+    def tank_can_radio_location(self, idx: int, x_pos: float, y_pos: float):
+        if idx < 0 or idx >= self.nb_nodes:
+            raise Exception("Index out of range.")
+
+        tank_pos = self.get_tank_pos(idx)
+        return dist(tank_pos, (x_pos, y_pos)) < self.get_tank_radius(idx)
+    
+    def get_tank_distance_from_hq(self, idx: int):
+        if idx < 0 or idx >= self.nb_nodes:
+            raise Exception("Index out of range.")
+        pos1 = self.get_tank_pos(idx)
+        pos2 = self.get_hq_pos()
+        return dist(pos1, pos2)
+    
+    def get_targets_pos(self):
+        """ Get all target positions """
+        positions = []
+        for target in self.targets:
+            positions.append(target.get_pos())
+        return positions
+
+    def get_tank_distance_to_position(self, idx: int, x: float, y: float):
+        if idx < 0 or idx >= self.nb_nodes:
+            raise Exception("Index out of range.")
+        if x < 0 or x >= self.x_size:
+            raise Exception("Map position out of range")
+        if y < 0 or y >= self.y_size:
+            raise Exception("Map position out of range")
+        pos = self.get_tank_pos(idx)
+        return dist(pos, (x,y))
+
     
