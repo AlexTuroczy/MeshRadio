@@ -70,6 +70,7 @@ class Map:
         self.scale = 100
         self.x_size = map_x_size
         self.y_size = map_y_size
+        self.altitude_centers = altitude_centers
         if altitude_centers:
             self.altitude = self._generate_altitudes(altitude_centers)
         else:
@@ -113,11 +114,10 @@ class Map:
     def _evaluate_altitude_torch(self, pos, altitude_centers):
 
         # Create the multivariate normal distribution
-        mvn = MultivariateNormal(loc=mean, covariance_matrix=cov)
 
-        sum = torch([0.0])
+        sum = torch.tensor([0.0])
         for center in altitude_centers:
-            mvn = MultivariateNormal(loc=torch.tensor(mean), covariance_matrix=torch.tensor(self.sigma))
+            mvn = MultivariateNormal(loc=torch.tensor(center, dtype=float), covariance_matrix=torch.tensor(self.sigma, dtype=float))
             altitude = torch.exp(mvn.log_prob(pos))
             sum += altitude
         return sum 
