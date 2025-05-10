@@ -122,4 +122,3 @@ def adaptive_loops(bounds):
     """
     for indices in np.ndindex(*bounds):
         yield torch.tensor(indices)
-    return penalised.sum() / penalised.count_nonzero()
