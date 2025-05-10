@@ -28,6 +28,7 @@ def main():
     hit_radius=2.0,
     hit_image_path="images/angry_king.jpg",  # ← tweak the path
     hit_image_zoom=0.05,
+    hit_image_offset=(-6, -0.5),
 )
 
     iters = 100
