@@ -86,7 +86,7 @@ class Map:
         
         self.hq = MapObject(hq_pos[0], hq_pos[1])
 
-        targets = []
+        self.targets = []
         self.targets = targets
         if targets:
             self.targets = [Target(x,y) for x,y in targets]
