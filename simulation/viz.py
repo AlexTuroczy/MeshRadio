@@ -1,48 +1,185 @@
 """
 Lightweight battlefield visualiser
 ----------------------------------
-• Tanks  → blue circles (+ optional dashed radio radius)
-• HQ     → yellow star
-• Target → red X
-• Links  → white dashed lines when tanks can radio each other
-• Terrain→ 'terrain' colormap heat‑map
+• Tanks   → blue circles (optionally surrounded by a dashed radio‑radius)
+• HQ      → yellow star
+• Targets → red X marks
+• Links   → white dashed lines when two tanks can hear each other
+• Terrain → coloured height‑map ("terrain" colormap by default)
+
+Extras
+------
+• Runs in *interactive* (non‑blocking) mode so your simulation loop keeps
+  executing while the figure is visible.
+• Click on a tank to trigger any user‑supplied callback (e.g. destroy it)
+  **and** show a short "hit" animation (either a fun PNG or a red X).
+• Call `viz.hold()` after your loop so the window stays open.
+
+Typical usage
+-------------
+>>> import viz
+>>>
+>>> def kill_tank(idx):
+...     env.set_tank_destroyed_or_missing(idx)
+...     print(f"Tank {idx} destroyed!")
+>>>
+>>> viz.init_live(click_kill_callback=kill_tank,
+...               hit_radius=2.0,
+...               hit_image_path="assets/angry_king.png",   # <‑‑ your PNG
+...               hit_image_zoom=0.35)                       # scale factor
+>>> for step in range(100):
+...     ...  # your simulation logic
+...     viz.render(env.get_state_dict())
+>>> viz.hold()
 """
 
 from __future__ import annotations
+
+import math
+from typing import Callable, Optional
+
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import matplotlib.offsetbox as ob
 import numpy as np
 
+# ---------------------------------------------------------------------
+# Global handles & state ------------------------------------------------
+# ---------------------------------------------------------------------
+_FIG: Optional[plt.Figure] = None
+_AX: Optional[plt.Axes] = None
+_LATEST_STATE: Optional[dict] = None        # cache of most recent state
+_KILL_CB: Optional[Callable[[int], None]] = None  # callback on click
+_HIT_RADIUS: float = 2.0                    # hit‑box radius in map units
+_HIT_IMG: Optional[np.ndarray] = None       # loaded PNG for hit marker
+_HIT_IMG_ZOOM: float = 0.35                 # scale factor for OffsetImage
 
 # ---------------------------------------------------------------------
-#  A global figure / axis so we can reuse them every frame
+# Internal helper: flashy hit‑marker animation -------------------------
 # ---------------------------------------------------------------------
-_FIG = None
-_AX  = None
 
-def init_live(*, figsize=(7, 7), cmap="terrain", link_colour="white",
-              show_radius=False):
+def _show_hit_marker(x: float, y: float, duration: float = 0.5):
+    """Draw either the custom PNG or a big red X for *duration* seconds."""
+    if _AX is None:
+        return
+
+    if _HIT_IMG is not None:
+        # Use the user's PNG
+        imagebox = ob.OffsetImage(_HIT_IMG, zoom=_HIT_IMG_ZOOM)
+        ab = ob.AnnotationBbox(imagebox, (x, y), frameon=False, zorder=6)
+        _AX.add_artist(ab)
+        _FIG.canvas.draw_idle()
+        plt.pause(duration)
+        ab.remove()
+    else:
+        # Fallback: red X marker
+        marker = _AX.scatter(
+            x,
+            y,
+            marker="x",
+            s=350,
+            linewidths=3,
+            color="red",
+            zorder=6,
+        )
+        _FIG.canvas.draw_idle()
+        plt.pause(duration)
+        marker.remove()
+
+    _FIG.canvas.draw_idle()
+
+# ---------------------------------------------------------------------
+# Internal helper: mouse‑click handler ---------------------------------
+# ---------------------------------------------------------------------
+
+def _on_click(event):
+    """Called by matplotlib when the user clicks inside the figure."""
+    global _LATEST_STATE, _KILL_CB, _HIT_RADIUS
+
+    # Only proceed if click happened inside our axes and we have state
+    if event.inaxes != _AX or _LATEST_STATE is None:
+        return
+
+    # Mouse position in data (map) coordinates
+    mx, my = float(event.xdata), float(event.ydata)
+
+    # Search for a tank centre within hit radius
+    for tank in _LATEST_STATE["tanks"]:
+        tx, ty = tank["pos"]
+        if math.hypot(mx - tx, my - ty) <= _HIT_RADIUS:
+            # 1) trigger user callback first (if any)
+            if _KILL_CB is not None:
+                _KILL_CB(tank["idx"])
+            # 2) show fun hit marker
+            _show_hit_marker(tx, ty)
+            break  # stop after first hit
+
+# ---------------------------------------------------------------------
+# Public API -----------------------------------------------------------
+# ---------------------------------------------------------------------
+
+def init_live(
+    *,
+    figsize=(7, 7),
+    cmap: str = "terrain",
+    link_colour: str = "white",
+    show_radius: bool = False,
+    click_kill_callback: Optional[Callable[[int], None]] = None,
+    hit_radius: float = 2.0,
+    hit_image_path: Optional[str] = None,
+    hit_image_zoom: float = 0.35,
+):
+    """Prepare the live, non‑blocking visualisation.
+
+    Parameters
+    ----------
+    hit_image_path : str | None
+        Path to a PNG (or any format `matplotlib.image.imread` can read).
+        If provided, that image is popped up over a tank when it is hit.
+    hit_image_zoom : float
+        Scale factor for the PNG when displayed.
     """
-    Call once before your simulation loop to switch matplotlib to
-    interactive mode and to create the figure we will update in‑place.
-    """
-    global _FIG, _AX
-    plt.ion()                       # interactive / non‑blocking
+    global _FIG, _AX, _KILL_CB, _HIT_RADIUS, _HIT_IMG, _HIT_IMG_ZOOM
+
+    plt.ion()
+
     _FIG, _AX = plt.subplots(figsize=figsize)
     _FIG.canvas.manager.set_window_title("Mesh‑Radio Simulation")
-    # store defaults for later
-    _AX._viz_cmap         = cmap
-    _AX._viz_link_colour  = link_colour
-    _AX._viz_show_radius  = show_radius
+
+    # Visual defaults stored on axis for convenience
+    _AX._viz_cmap = cmap
+    _AX._viz_link_colour = link_colour
+    _AX._viz_show_radius = show_radius
+
+    # Interaction settings
+    _KILL_CB = click_kill_callback
+    _HIT_RADIUS = float(hit_radius)
+
+    # Load hit marker image if provided
+    if hit_image_path is not None:
+        try:
+            _HIT_IMG = mpimg.imread(hit_image_path)
+            _HIT_IMG_ZOOM = hit_image_zoom
+        except FileNotFoundError:
+            print(f"[viz] Could not find hit image at '{hit_image_path}'. "
+                  "Falling back to red X marker.")
+            _HIT_IMG = None
+    else:
+        _HIT_IMG = None
+
+    # Connect click handler (always; handler decides what to do)
+    _FIG.canvas.mpl_connect("button_press_event", _on_click)
+
     _AX.set_aspect("equal")
     _FIG.show()
-    return _FIG, _AX                # handy if you want to tweak styling
+
+    return _FIG, _AX
 
 
 def render(state: dict):
-    """
-    Refresh the live window using the current environment state.
-    Must call init_live() beforehand.
-    """
+    """Refresh the live window with the current environment *state* dict."""
+    global _FIG, _AX, _LATEST_STATE
+
     if _AX is None:
         raise RuntimeError("viz.init_live() must be called before viz.render()")
 
@@ -107,22 +244,23 @@ def render(state: dict):
     # ------------------------------------------------------------------
     _AX.set_xlim(0, state["map_size"][0])
     _AX.set_ylim(0, state["map_size"][1])
-    _AX.set_xlabel("X (m)")
-    _AX.set_ylabel("Y (m)")
+    _AX.set_xlabel("X (m)")
+    _AX.set_ylabel("Y (m)")
     _AX.set_title("Battle‑field overview")
 
     # ------------------------------------------------------------------
-    # 7.  Draw & yield control back to Python
+    # 7.  Draw & yield control back to simulation
     # ------------------------------------------------------------------
     _FIG.canvas.draw_idle()
-    plt.pause(0.001)                # ~1 ms; keeps UI responsive
+    plt.pause(0.001)
+
+    # cache latest state for click handler
+    _LATEST_STATE = state
+
 
 def hold() -> None:
-    """
-    Switch back to blocking mode and keep the live window open until the
-    user closes it manually.  Call this *after* your simulation loop.
-    """
-    plt.ioff()          # leave interactive mode
+    """Block program exit and keep the figure open until the user closes it."""
+    plt.ioff()
     if _FIG is not None:
         _FIG.canvas.draw_idle()
-    plt.show()          # this call is now blocking
+    plt.show()

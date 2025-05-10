@@ -90,7 +90,6 @@ class Map:
         self.hq = MapObject(hq_pos[0], hq_pos[1])
 
         self.targets = []
-        self.targets = targets
         if targets:
             self.targets = [Target(x,y) for x,y in targets]
 
@@ -191,12 +190,16 @@ class Map:
         pos2 = self.get_tank_pos(idx2)
         return utils.dist(pos1, pos2)
     
-    def tank_can_radio_location(self, idx: int, x_pos: float, y_pos: float):
+    def tank_can_radio_location(self, idx: int, x_pos: float, y_pos: float, visualization=False):
         if idx < 0 or idx >= self.nb_nodes:
             raise Exception("Index out of range.")
+        
+        eps = 0
+        if visualization:
+            eps = 1
 
         tank_pos = self.get_tank_pos(idx)
-        return utils.dist(tank_pos, (x_pos, y_pos)) < self.get_tank_radius(idx)
+        return utils.dist(tank_pos, (x_pos, y_pos)) < self.get_tank_radius(idx) + eps
     
     def get_tank_distance_from_hq(self, idx: int):
         if idx < 0 or idx >= self.nb_nodes:
@@ -244,6 +247,13 @@ class Map:
         self.nodes.append(MiniTank(x_pos, y_pos, radar_radius=radius))
         self.nb_nodes += 1
 
+    def set_tank_target(self, tank_idx, target_idx):
+        if tank_idx < 0 or tank_idx >= self.nb_nodes:
+            raise Exception("Index out of range.")
+        if 0 < target_idx or target_idx >= len(self.targets) - 1:
+            raise Exception("Index out of range")
+        self.nodes[tank_idx].set_target(self.targets[target_idx])
+
     def set_targets_all_tanks(self, target_idx: int):
         if 0 < target_idx or target_idx >= len(self.targets) - 1:
             raise Exception("Index out of range")
@@ -270,8 +280,8 @@ class Map:
         for i in range(self.nb_nodes):
             for j in range(i + 1, self.nb_nodes):
                 if (
-                    self.tank_can_radio_location(i, *self.get_tank_pos(j))
-                    and self.tank_can_radio_location(j, *self.get_tank_pos(i))
+                    self.tank_can_radio_location(i, *self.get_tank_pos(j), visualization=True)
+                    and self.tank_can_radio_location(j, *self.get_tank_pos(i), visualization=True)
                 ):
                     links.append((i, j))
         return links

@@ -104,7 +104,7 @@ def dropout_loss(positions, env_map, max_dropout: int = 2, probability_dropout: 
     loss_term = 0
 
     for depth in range(max_dropout):
-        for idx in adaptive_loops((depth,)):
+        for idx in adaptive_loops([positions.shape[0] for _ in range(depth)]):
             all_indices = torch.arange(positions.size(0))
             keep_indices = all_indices[~torch.isin(all_indices, idx)]
 
@@ -126,5 +126,8 @@ def adaptive_loops(bounds):
     Yields:
         tuple: The current index for each loop level.
     """
-    for indices in np.ndindex(*bounds):
-        yield torch.tensor(indices)
+    if bounds == (0,):
+        yield torch.tensor([])
+    else:
+        for indices in np.ndindex(*bounds):
+            yield torch.tensor(indices)
