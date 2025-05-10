@@ -15,7 +15,7 @@ class MapObject:
         self.y_pos = y_pos
 
     def get_pos(self):
-        return self.x_pos, self.y_pos
+        return np.array([self.x_pos, self.y_pos])
     
     def set_pos(self, x: float, y: float):
         self.x_pos = x
