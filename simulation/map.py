@@ -2,8 +2,8 @@ import numpy as np
 
 from typing import List, Tuple, Optional
 
-from constants import DEFAULT_RADIO_RADIUS
-from utils import dist
+from simulation import constants
+from simulation import utils
 
 from random import randint
 import math
@@ -69,13 +69,13 @@ class Map:
 
         if init_positions:
             assert len(init_positions) == nb_nodes
-            self.nodes = [MiniTank(x, y, DEFAULT_RADIO_RADIUS) for x,y in init_positions]
+            self.nodes = [MiniTank(x, y, constants.DEFAULT_RADIO_RADIUS) for x,y in init_positions]
         else:
             self.nodes = []
             for _ in range(nb_nodes):
                 x = randint(0, self.x_size)
                 y = randint(0, self.y_size)
-                self.nodes.append(MiniTank(x, y, DEFAULT_RADIO_RADIUS))
+                self.nodes.append(MiniTank(x, y, constants.DEFAULT_RADIO_RADIUS))
         
         self.hq = MapObject(hq_pos[0], hq_pos[1])
 
@@ -104,6 +104,10 @@ class Map:
         if idx < 0 or idx >= self.nb_nodes:
             raise Exception("Index out of range.")
         return self.nodes[idx].get_pos()
+
+    def set_pos_all_tanks(self, positions: dict):
+        for tank_idx, pos in positions.items():
+            self.set_tank_pos(tank_idx, pos[0], pos[1])
     
     def set_tank_pos(self, idx: int, x_pos, y_pos):
         if idx < 0 or idx >= self.nb_nodes:
@@ -162,21 +166,21 @@ class Map:
             raise Exception("Index out of range.")
         pos1 = self.get_tank_pos(idx1)
         pos2 = self.get_tank_pos(idx2)
-        return dist(pos1, pos2)
+        return utils.dist(pos1, pos2)
     
     def tank_can_radio_location(self, idx: int, x_pos: float, y_pos: float):
         if idx < 0 or idx >= self.nb_nodes:
             raise Exception("Index out of range.")
 
         tank_pos = self.get_tank_pos(idx)
-        return dist(tank_pos, (x_pos, y_pos)) < self.get_tank_radius(idx)
+        return utils.dist(tank_pos, (x_pos, y_pos)) < self.get_tank_radius(idx)
     
     def get_tank_distance_from_hq(self, idx: int):
         if idx < 0 or idx >= self.nb_nodes:
             raise Exception("Index out of range.")
         pos1 = self.get_tank_pos(idx)
         pos2 = self.get_hq_pos()
-        return dist(pos1, pos2)
+        return utils.dist(pos1, pos2)
     
     def get_targets_pos(self):
         """ Get all target positions """
@@ -193,7 +197,7 @@ class Map:
         if y < 0 or y >= self.y_size:
             raise Exception("Map position out of range")
         pos = self.get_tank_pos(idx)
-        return dist(pos, (x,y))
+        return utils.dist(pos, (x,y))
 
     def get_nb_tanks(self):
         return self.nb_nodes
@@ -213,7 +217,7 @@ class Map:
 
     def add_new_tank(self, x_pos: float, y_pos: float, radius: Optional[float] = None):
         if radius is None:
-            radius = DEFAULT_RADIO_RADIUS
+            radius = constants.DEFAULT_RADIO_RADIUS
         self.nodes.append(MiniTank(x_pos, y_pos, radar_radius=radius))
         self.nb_nodes += 1
     

@@ -11,7 +11,7 @@ CONNECT_WEIGHT = 1.0       # enforces k‑connectivity robustness
 #  Public API
 # ---------------------------------------------------------------------------
 
-def loss(env_map, positions, k: int = 2) -> torch.Tensor:
+def loss(positions, env_map, k: int = 2) -> torch.Tensor:
     """Compute the composite loss for the current environment state.
 
     Parameters
@@ -29,7 +29,7 @@ def loss(env_map, positions, k: int = 2) -> torch.Tensor:
         Differentiable scalar objective (higher ⇒ worse).
     """
 
-    threshold = float(env_map.get_threshold())
+    threshold = float(env_map.get_tank_radius(0))
 
     disp = dist_loss(positions)
     conn = connectivity_loss(positions, k, threshold)
