@@ -27,6 +27,13 @@ class MiniTank(MapObject):
     def __init__(self, x_pos: float, y_pos: float, radar_radius: int):
         super().__init__( x_pos, y_pos)
         self.radar_radius = radar_radius
+        self.target = Target(-1, -1)
+
+    def set_target(self, target):
+        self.target = target
+
+    def get_target_pos(self):
+        return self.target.get_pos()
 
     def get_radius(self):
         return self.radar_radius
@@ -221,7 +228,20 @@ class Map:
             radius = constants.DEFAULT_RADIO_RADIUS
         self.nodes.append(MiniTank(x_pos, y_pos, radar_radius=radius))
         self.nb_nodes += 1
-    
+
+    def set_targets_all_tanks(self, target_idx: int):
+        if 0 < target_idx or target_idx >= len(self.targets) - 1:
+            raise Exception("Index out of range")
+        target = self.targets[target_idx]
+        for node in self.nodes:
+            node.set_target(target)
+
+    def get_all_tank_targets(self):
+        """ Returns dict of tank ids and target positions """
+        target_pos = {}
+        for id, node in enumerate(self.nodes):
+            target_pos[id] = node.get_target_pos()
+        return target_pos
 
     # ---------------------------------------------------------------------
     # NEW — inside class Map
