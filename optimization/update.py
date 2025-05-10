@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import torch
 from ObjectiveFunction import loss
-from ..simulation import Map
+from simulation.map import Map
 import numpy as np
 
 # example map
