@@ -4,7 +4,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import torch
-from ObjectiveFunction import loss
+from optimization.loss import loss
 from simulation.map import Map
 import numpy as np
 
@@ -33,6 +33,9 @@ def update(env_map):
 
         print(f"Epoch {epoch+1}: Loss = {l.item():.4f}")
     
-    return positions 
+    mapping = {
+       i:  np.array(positions[i]) for i in positions.size[0]
+    }
+    return mapping
 
     

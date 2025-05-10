@@ -1,2 +1,2 @@
 # MESHRADIO.optimization
-from .ObjectiveFunction import loss
+from .loss import loss
