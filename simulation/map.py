@@ -228,6 +228,13 @@ class Map:
         self.nodes.append(MiniTank(x_pos, y_pos, radar_radius=radius))
         self.nb_nodes += 1
 
+    def set_tank_target(self, tank_idx, target_idx):
+        if tank_idx < 0 or tank_idx >= self.nb_nodes:
+            raise Exception("Index out of range.")
+        if 0 < target_idx or target_idx >= len(self.targets) - 1:
+            raise Exception("Index out of range")
+        self.nodes[tank_idx].set_target(self.targets[target_idx])
+
     def set_targets_all_tanks(self, target_idx: int):
         if 0 < target_idx or target_idx >= len(self.targets) - 1:
             raise Exception("Index out of range")
