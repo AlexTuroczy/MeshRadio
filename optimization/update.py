@@ -1,3 +1,8 @@
+import sys
+import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import torch
 from ObjectiveFunction import loss
 from MESHRADIO.simulation import Map
@@ -26,7 +31,8 @@ def update(env_map):
         l.backward()             # backward pass (compute gradients)
         optimizer.step()            # update weights
 
-
         print(f"Epoch {epoch+1}: Loss = {l.item():.4f}")
+    
+    return positions 
 
     
