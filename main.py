@@ -1,11 +1,15 @@
 from simulation import Map, viz
 from optimization import Update
 
+CLOSE_START = [(10, 10), (10, 11), (10, 12.3),
+                        (10, 9.5), (10.3, 13), (11, 12)]
+SPREAD_OUT = [(10, 10), (15, 60), (30, 80),
+                        (60, 20), (80, 75), (45, 45)]
+
 def main():
     env = Map(
         100, 100, 6, (50, 50),
-        init_positions=[(10, 10), (15, 60), (30, 80),
-                        (60, 20), (80, 75), (45, 45)],
+        init_positions=CLOSE_START,
         targets=[(90, 10), (10, 90), (80, 50)],
         altitude_centers=[[20, 20], [70, 70], [40, 80]],
         sigmas=[20,20]
