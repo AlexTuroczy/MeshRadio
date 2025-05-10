@@ -3,6 +3,8 @@ import unittest
 from map import Map
 
 import math
+import scipy
+import numpy as np
 
 from constants import DEFAULT_RADIO_RADIUS
 
@@ -41,3 +43,25 @@ class MapTestCase(unittest.TestCase):
 
         for i in range(5):
             self.assertAlmostEqual(map.get_tank_altitude(i), i)
+
+    def test_get_tank_altitude_with_gaussian(self):
+        tank_positions = [(1,1.2), (2.4,2), (3,3), (4,4.1), (5,5)]
+        center = [(0,0)]
+        map = Map(10, 10, 5, (0,0), tank_positions, altitude_centers=center)
+
+        rv = scipy.stats.multivariate_normal(mean=center[0], cov=map.sigma)
+        for i in range(5):
+            pos = self._round(tank_positions[i])
+            self.assertAlmostEqual(map.get_tank_altitude(i), rv.pdf(np.array(pos)) * map.scale)
+
+        center = [(0, 0), (2,2)]
+        map = Map(10, 10, 5, (0, 0), tank_positions, altitude_centers=center)
+
+        rv1 = scipy.stats.multivariate_normal(mean=center[0], cov=map.sigma)
+        rv2 = scipy.stats.multivariate_normal(mean=center[1], cov=map.sigma)
+        for i in range(5):
+            pos = self._round(tank_positions[i])
+            self.assertAlmostEqual(map.get_tank_altitude(i), (rv1.pdf(np.array((pos))) + rv2.pdf(np.array(pos))) * map.scale)
+
+    def _round(self, tup):
+        return (round(tup[0]), round(tup[1]))
