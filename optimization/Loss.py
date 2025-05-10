@@ -4,36 +4,44 @@ import numpy as np
 # ---------------------------------------------------------------------------
 #  Tunable weights for the composite objective
 # ---------------------------------------------------------------------------
-DIST_WEIGHT = 1.0          # encourages spatial dispersion / coverage
-CONNECT_WEIGHT = 1.0       # enforces k‑connectivity robustness
+DIST_WEIGHT = 0.0          # encourages spatial dispersion / coverage
+CONNECT_WEIGHT = 0.5      # enforces k‑connectivity robustness
 
 # ---------------------------------------------------------------------------
 #  Public API
 # ---------------------------------------------------------------------------
 
-def loss(positions, env_map, k: int = 2) -> torch.Tensor:
-    """Compute the composite loss for the current environment state.
+def loss(
+    positions: torch.Tensor,
+    env_map,
+    k: int = 2,
+) -> torch.Tensor:
+    """Composite objective for the swarm given the current *trainable* positions.
 
     Parameters
     ----------
-    env_map : object
-        Must expose:
-            get_tank_positions() -> Dict[id, Tuple[float, float]]
-            get_threshold()      -> float (communication radius)
-    k : int, default=2
+    positions : torch.Tensor, shape (N, 2)
+        Tank coordinates **with** ``requires_grad=True`` so we can optimise
+        them directly.
+    env_map : Map‑like object
+        Must implement ``get_threshold()`` to provide the communication radius.
+        No other map fields are used inside the loss; this keeps the graph
+        clean and avoids accidental in‑place edits of map state.
+    k : int, default 2
         Required neighbour count for *k*-connectivity.
 
     Returns
     -------
     torch.Tensor
-        Differentiable scalar objective (higher ⇒ worse).
+        Scalar differentiable loss. Lower is better.
     """
 
     threshold = float(env_map.get_tank_radius(0))
 
-    disp = dist_loss(positions)
-    conn = connectivity_loss(positions, k, threshold)
-    return - DIST_WEIGHT * disp + CONNECT_WEIGHT * conn
+    dispersion = dist_loss(positions)
+    connectivity = connectivity_loss(positions, k, threshold)
+
+    return - DIST_WEIGHT * dispersion + CONNECT_WEIGHT * connectivity
 
 
 # ---------------------------------------------------------------------------
@@ -41,12 +49,13 @@ def loss(positions, env_map, k: int = 2) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 
 def dist_loss(positions: torch.Tensor, exclude_self: bool = True) -> torch.Tensor:
-    """Mean pair‑wise Euclidean distance between points (coverage term)."""
+    """Mean pair‑wise Euclidean distance between all points (coverage term)."""
     D = torch.cdist(positions, positions, p=2)
     if exclude_self:
         mask = ~torch.eye(D.size(0), dtype=torch.bool, device=D.device)
         return D[mask].mean()
     return D.mean()
+
 
 
 def connectivity_loss(
@@ -56,42 +65,28 @@ def connectivity_loss(
 ) -> torch.Tensor:
     """Penalty for tanks that do **not** meet the *k*-neighbour requirement.
 
-    Steps:
-    1. Compute the degree (neighbour count) of every tank using the provided
-       communication radius.
-    2. If a tank's degree is **≥ k** it contributes **zero** to the loss.
-    3. Otherwise include *all* positive gaps (``distance − threshold``) between
-       that tank and every other tank.  The overall loss is the mean of these
-       selected gaps, giving smooth, fully‑differentiable gradients.
-
-    Parameters
-    ----------
-    positions : torch.Tensor, shape (N, 2)
-    k         : int, minimum required neighbours
-    threshold : float, communication radius
-
-    Returns
-    -------
-    torch.Tensor – scalar ≥ 0.  Zero when the swarm is *k*-connected.
+    Fix for *inf* loss: we exclude self‑distances from **both** the degree
+    computation *and* the gap penalty so no ∞ values ever enter the mean.
     """
 
-    # Pair‑wise distances (N, N) – diagonal set to 0 so it won't affect gaps
+    # 1) pair‑wise distances (N, N)
     D = torch.cdist(positions, positions, p=2)
-    D.fill_diagonal_(0.0)
 
-    # Degree: count of neighbours already within range
-    deg = (D < threshold).sum(dim=1)  # (N,)
+    eye = torch.eye(D.size(0), dtype=torch.bool, device=D.device)
 
-    # Mask rows that violate the degree requirement (1 ⇒ penalise, 0 ⇒ ignore)
-    mask = (deg < k).float()          # (N,)
-    if mask.max() == 0:
-        # Every tank satisfied ⇒ zero loss (keeps graph clean)
+    # 2) degree of each node (ignore self‑distance by masking)
+    deg = (D.masked_fill(eye, float('inf')) < threshold).sum(dim=1)
+
+    deficient = deg < k               # boolean (N,)
+    if not deficient.any():
         return positions.new_zeros(())
 
-    # Positive gaps for *all* pairs (distance beyond threshold)
-    delta = torch.relu(D - threshold)  # (N, N)
+    # 3) positive gaps beyond threshold (set diagonal gap to 0 so it NEVER
+    #    pollutes the mean, even for deficient nodes)
+    delta = torch.relu(D - threshold)
+    delta = delta.masked_fill(eye, 0.0)   # kill diagonal
 
-    # Row‑scale by mask to include only deficient tanks
-    penalised = delta * mask.unsqueeze(1)  # broadcast (N,1) → (N,N)
+    # 4) keep only deficient rows
+    penalised = delta * deficient.unsqueeze(1).float()
 
-    return penalised.mean()
+    return penalised.sum() / penalised.count_nonzero()
