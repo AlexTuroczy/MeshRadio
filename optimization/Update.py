@@ -38,6 +38,10 @@ def update(env_map,k=3):
 
         print(f"Epoch {epoch+1}: Loss = {loss.item():.4f}")
 
+
+        # 2. Clip the gradient norm to avoid exploding gradients
+        torch.nn.utils.clip_grad_norm_([positions], max_norm=0.5)
+
     positions = positions.detach().numpy()
     print(positions)
     ret = {i: np.array(positions[i]) for i in range(positions.shape[0])}
