@@ -2,3 +2,4 @@
 simulation/__pycache__/
 /.venv
 .python-version
+.idea/*
