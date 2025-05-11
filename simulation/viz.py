@@ -158,6 +158,7 @@ def init_live(
     """
     global _FIG, _AX, _KILL_CB, _HIT_RADIUS, _HIT_IMG, _HIT_IMG_ZOOM, _HIT_IMG_OFFSET, _TANK_IMG, _TANK_IMG_ZOOM
 
+
     # Load tank marker image if provided
     if tank_image_path is not None:
         try:
@@ -172,7 +173,23 @@ def init_live(
     plt.ion()
 
     _FIG, _AX = plt.subplots(figsize=figsize)
-    _FIG.canvas.manager.set_window_title("Mesh‑Radio Simulation")
+    
+    manager = plt.get_current_fig_manager()
+    manager.set_window_title("Mesh‑Radio Simulation")
+
+    try:
+        # Cross-platform full screen toggle
+        manager.full_screen_toggle()
+    except AttributeError:
+        # Fallback for older matplotlib versions or backends
+        try:
+            manager.window.state('zoomed')  # Windows
+        except Exception:
+            try:
+                manager.window.showMaximized()  # Qt backend
+            except Exception:
+                print("[viz] Could not set full screen mode.")
+
 
     # Axis‑stored visual defaults
     _AX._viz_cmap = cmap
@@ -262,6 +279,7 @@ def render(state: dict):
     _AX.axis('off')
 
     _FIG.canvas.draw_idle()
+
     plt.pause(0.001)
 
     _LATEST_STATE = state
