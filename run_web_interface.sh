@@ -26,11 +26,11 @@ source venv/bin/activate
 
 # Install dependencies
 echo "Installing dependencies..."
-#pip install -r web/requirements.txt
+pip install -r web/requirements.txt
 
-# Run the web interface
+# Run the web interface using the integrated main.py
 echo "Starting web server..."
-cd web && python app.py
+python main.py --web
 
 # Deactivate virtual environment on exit
 deactivate

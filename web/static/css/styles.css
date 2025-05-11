@@ -179,7 +179,24 @@ main {
 }
 
 .side-panel.collapsed .panel-content {
-    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.side-panel.collapsed .panel-header {
+    width: 40px;
+    overflow: hidden;
+    padding: 1rem 0;
+    border-bottom: none;
+}
+
+.side-panel.collapsed .panel-header h2 {
+    opacity: 0;
+}
+
+.panel-content {
+    opacity: 1;
+    transition: opacity 0.3s ease;
 }
 
 .panel-header {
@@ -197,17 +214,30 @@ main {
 }
 
 .toggle-btn {
-    background: none;
-    border: none;
+    position: absolute;
+    right: 300px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    background-color: var(--panel-color);
     color: var(--text-color);
+    border: none;
+    border-left: 1px solid var(--secondary-color);
+    border-top: 1px solid var(--secondary-color);
+    border-bottom: 1px solid var(--secondary-color);
+    width: 30px;
+    height: 60px;
+    border-radius: 4px 0 0 4px;
     cursor: pointer;
-    font-size: 1rem;
-    transition: transform 0.3s ease;
-    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: right 0.3s ease, transform 0.3s ease;
 }
 
-.side-panel.collapsed .toggle-btn {
-    transform: rotate(180deg);
+.side-panel.collapsed + .toggle-btn {
+    right: 0;
+    transform: translateY(-50%) rotate(180deg);
 }
 
 .panel-content {

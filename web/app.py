@@ -6,12 +6,34 @@ import json
 import threading
 import time
 import numpy as np
+import random
+import math
+from pathlib import Path
 
 # Add parent directory to path so we can import from the simulation module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from simulation import Map
 from optimization import Update
+
+# Import constants from main.py
+MAX_STEP_SIZE = 0.3
+
+# STARTS
+CLOSE_START = [(10, 10), (10, 11), (10, 12.3),
+                        (10, 9.5), (10.3, 13), (11, 12)]
+SPREAD_OUT = [(10, 10), (15, 60), (30, 80),
+                        (60, 20), (80, 75), (45, 45)]
+
+# Altitude centers
+BASE_IRRELEVANT_ALTS = [[20, 20], [70, 70], [40, 80]]
+TARGET_INTERESTING_ALTS = [[45, 20], [30, 10], [40, 20]]
+
+# Sigmas
+GOOD_FOR_SPARSE_SIGS = [20,20]
+VALLEYS_SIGS = [16,4]
+
+SPAWN_AROUND_HQ = [(7,42), (7,43), (7,44), (7, 44), (5,43), (8, 46), (8, 47), (9, 47), (9, 44), (9,45)]
 
 app = Flask(__name__)
 CORS(app)
@@ -31,49 +53,81 @@ def convert_numpy_to_python(obj):
     else:
         return obj
 
+# Load shared configuration
+config_path = Path(__file__).parent / 'config.json'
+with open(config_path, 'r') as f:
+    config = json.load(f)
+
 # Global variables to store simulation state
 simulation_running = False
 simulation_thread = None
 simulation_state = {}
 simulation_step = 0
-simulation_params = {
-    "map_x_size": 100,
-    "map_y_size": 100,
-    "nb_tanks": 10,
-    "hq_pos": (50, 50),
-    "targets": [(90, 10), (10, 90), (80, 50)],
-    "altitude_centers": [[80, 40], [60, 10], [90, 20]],
-    "sigmas": [16, 4],
-    "max_step_size": 0.3
-}
 
-# Initialize environment with default parameters
+# Functions from main.py
+def reset_targets(env):
+    target_pos = env.get_targets_pos()[0]
+    target_pos2 = env.get_targets_pos()[1]
+    hq_pos = env.get_hq_pos()
+    for tank in range(env.get_nb_tanks()):
+        if env.get_tank_distance_to_position(tank, target_pos[0], target_pos[1]) < 2:
+            env.set_tank_return_goal(tank)
+        if env.get_tank_distance_to_position(tank, target_pos2[0], target_pos2[1]) < 2:
+            env.set_tank_return_goal(tank)
+        elif env.get_tank_distance_to_position(tank, hq_pos[0], hq_pos[1]) < 2:
+            if random.randint(0,1) == 0:
+                env.set_tank_target(tank, 0)
+            else:
+                env.set_tank_target(tank, 1)
+    return env
+
+def devide_by_norm(next_positions, prev_pos):
+    delta = {k: next_positions[k] - prev_pos[k] for k in prev_pos.keys()}
+    norm = {k: l2_norm(delta[k]) for k in delta.keys()}
+    new_pos_delta = {}
+    for k in delta.keys():
+        new_pos_delta[k] = MAX_STEP_SIZE * delta[k] / norm[k] if norm[k] >= 1 else delta[k]
+    new_pos = {k: prev_pos[k] + new_pos_delta[k] for k in prev_pos.keys()}
+    return new_pos
+
+def l2_norm(vec):
+    return math.sqrt(vec[0]**2 + vec[1]**2)
+
+# Initialize environment with parameters from main.py
 def init_environment():
     global env
+    
+    # Get parameters from config
+    map_x_size = config['simulation']['map_x_size']
+    map_y_size = config['simulation']['map_y_size']
+    nb_tanks = config['simulation']['nb_tanks']
+    hq_pos = tuple(config['simulation']['hq_pos'])
+    targets = [tuple(target) for target in config['simulation']['targets']]
+    altitude_centers = config['simulation']['altitude_centers']
+    sigmas = config['simulation']['sigmas']
+    
+    # Initialize environment using main.py structure
     env = Map(
-        simulation_params["map_x_size"],
-        simulation_params["map_y_size"],
-        simulation_params["nb_tanks"],
-        simulation_params["hq_pos"],
-        init_positions=[(55,55), (55,53), (55,50), (55, 45), (50,45), (45, 45), (45, 50), (45, 55), (50, 55), (53,55)][:simulation_params["nb_tanks"]],
-        targets=simulation_params["targets"],
-        altitude_centers=simulation_params["altitude_centers"],
-        sigmas=simulation_params["sigmas"]
+        map_x_size, map_y_size, nb_tanks, hq_pos,
+        init_positions=SPAWN_AROUND_HQ[:nb_tanks],
+        targets=targets[:2],  # Use only first two targets
+        altitude_centers=TARGET_INTERESTING_ALTS,
+        sigmas=VALLEYS_SIGS
     )
     
-    # Set initial targets for tanks
+    # Set initial targets for tanks as in main.py
     env.set_targets_all_tanks(0)
-    for i in range(min(4, simulation_params["nb_tanks"])):
-        env.set_tank_target(i, 2)
+    for i in range(min(4, nb_tanks)):
+        env.set_tank_target(i, 1)
     
     return env
 
 # Initialize environment
 env = init_environment()
 
-# Function to run simulation in a separate thread
+# Function to run simulation in a separate thread - based on main.py loop
 def run_simulation():
-    global simulation_running, simulation_state, simulation_step
+    global simulation_running, simulation_state, simulation_step, env
     
     while simulation_running:
         # Store previous positions
@@ -82,33 +136,14 @@ def run_simulation():
         # Calculate next positions
         next_positions = Update.update(env)
         
-        # Normalize movement
-        next_pos_normed = {}
-        for k in prev_pos.keys():
-            delta = next_positions[k] - prev_pos[k]
-            norm = (delta[0]**2 + delta[1]**2)**0.5
-            if norm >= 1:
-                delta = simulation_params["max_step_size"] * delta / norm
-            next_pos_normed[k] = prev_pos[k] + delta
+        # Apply movement with normalization as in main.py
+        next_pos_normed = devide_by_norm(next_positions, prev_pos)
         
         # Update tank positions
         env.set_pos_all_tanks(next_pos_normed)
         
-        # Reset targets if needed
-        target_pos = env.get_targets_pos()[0]
-        target_pos2 = env.get_targets_pos()[2]
-        hq_pos = env.get_hq_pos()
-        
-        for tank in range(env.get_nb_tanks()):
-            if env.get_tank_distance_to_position(tank, target_pos[0], target_pos[1]) < 2:
-                env.set_tank_return_goal(tank)
-            if env.get_tank_distance_to_position(tank, target_pos2[0], target_pos2[1]) < 2:
-                env.set_tank_return_goal(tank)
-            elif env.get_tank_distance_to_position(tank, hq_pos[0], hq_pos[1]) < 2:
-                if tank % 2 == 0:
-                    env.set_tank_target(tank, 0)
-                else:
-                    env.set_tank_target(tank, 2)
+        # Reset targets using the function from main.py
+        env = reset_targets(env)
         
         # Update simulation state
         simulation_state = env.get_state_dict()
@@ -184,23 +219,48 @@ def kill_tank():
 
 @app.route('/api/params', methods=['GET'])
 def get_params():
-    return jsonify(convert_numpy_to_python(simulation_params))
+    params = {
+        "map_x_size": config['simulation']['map_x_size'],
+        "map_y_size": config['simulation']['map_y_size'],
+        "nb_tanks": config['simulation']['nb_tanks'],
+        "hq_pos": config['simulation']['hq_pos'],
+        "targets": config['simulation']['targets'][:2],
+        "altitude_centers": TARGET_INTERESTING_ALTS,
+        "sigmas": VALLEYS_SIGS,
+        "max_step_size": MAX_STEP_SIZE
+    }
+    return jsonify(convert_numpy_to_python(params))
+
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    return jsonify(config)
 
 @app.route('/api/params', methods=['POST'])
 def update_params():
-    global simulation_params, env
+    global env
     
     data = request.json
     
-    # Update parameters
-    for key, value in data.items():
-        if key in simulation_params:
-            simulation_params[key] = value
+    # Update configuration
+    if 'nb_tanks' in data:
+        config['simulation']['nb_tanks'] = data['nb_tanks']
+    
+    if 'max_step_size' in data:
+        global MAX_STEP_SIZE
+        MAX_STEP_SIZE = data['max_step_size']
+    
+    if 'sigmas' in data and len(data['sigmas']) == 2:
+        global VALLEYS_SIGS
+        VALLEYS_SIGS = data['sigmas']
     
     # Reset environment with new parameters
     env = init_environment()
     
-    return jsonify({"status": "success", "params": convert_numpy_to_python(simulation_params)})
+    return jsonify({"status": "success", "params": convert_numpy_to_python({
+        "nb_tanks": config['simulation']['nb_tanks'],
+        "max_step_size": MAX_STEP_SIZE,
+        "sigmas": VALLEYS_SIGS
+    })})
 
 if __name__ == '__main__':
     app.run(debug=True)

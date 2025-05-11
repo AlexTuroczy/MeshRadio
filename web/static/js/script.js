@@ -6,6 +6,7 @@ const ctx = canvas.getContext('2d');
 let animationFrameId;
 let simulationState = {};
 let isRunning = false;
+let config = null;
 
 // UI elements
 const startBtn = document.getElementById('start-btn');
@@ -26,11 +27,11 @@ const maxStepSizeInput = document.getElementById('max-step-size');
 const sigmaXInput = document.getElementById('sigma-x');
 const sigmaYInput = document.getElementById('sigma-y');
 
-// Constants
-const TANK_RADIUS = 10;
-const HQ_SIZE = 12;
-const TARGET_SIZE = 8;
-const GRID_SIZE = 20;
+// Default constants (will be overridden by config)
+let TANK_RADIUS = 10;
+let HQ_SIZE = 12;
+let TARGET_SIZE = 8;
+let GRID_SIZE = 20;
 const BACKGROUND_PATTERN_SIZE = 5;
 
 // Tank image
@@ -41,8 +42,8 @@ tankImage.src = '/static/images/tankconnected.png';
 const HQ_ICON = 'M';  // Will be drawn as a hexagon
 const TARGET_ICON = 'T';  // Will be drawn as a diamond
 
-// Colors
-const COLORS = {
+// Default colors (will be overridden by config)
+let COLORS = {
     tank: '#48cae4',
     hq: '#ffd700',
     target: '#f44336',
@@ -59,7 +60,10 @@ const COLORS = {
 };
 
 // Initialize the dashboard
-function init() {
+async function init() {
+    // Load configuration
+    await loadConfig();
+    
     // Set canvas size
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
@@ -72,11 +76,52 @@ function init() {
     applyParamsBtn.addEventListener('click', applyParameters);
     killRandomTankBtn.addEventListener('click', killRandomTank);
     
+    // Initialize parameter inputs with config values
+    updateParameterInputs();
+    
     // Start fetching simulation state
     fetchSimulationState();
     
     // Initial render
     render();
+}
+
+// Load shared configuration
+async function loadConfig() {
+    try {
+        const response = await fetch('/api/config');
+        config = await response.json();
+        
+        // Update constants from config
+        if (config.visual) {
+            TANK_RADIUS = config.visual.tank_radius;
+            HQ_SIZE = config.visual.hq_size;
+            TARGET_SIZE = config.visual.target_size;
+            GRID_SIZE = config.visual.grid_size;
+            
+            // Update colors
+            if (config.visual.colors) {
+                Object.assign(COLORS, config.visual.colors);
+            }
+        }
+        
+        console.log('Configuration loaded:', config);
+    } catch (error) {
+        console.error('Error loading configuration:', error);
+    }
+}
+
+// Update parameter inputs with values from config
+function updateParameterInputs() {
+    if (config && config.simulation) {
+        nbTanksInput.value = config.simulation.nb_tanks;
+        maxStepSizeInput.value = config.simulation.max_step_size;
+        
+        if (config.simulation.sigmas && config.simulation.sigmas.length >= 2) {
+            sigmaXInput.value = config.simulation.sigmas[0];
+            sigmaYInput.value = config.simulation.sigmas[1];
+        }
+    }
 }
 
 // Resize canvas to fit container
@@ -89,14 +134,8 @@ function resizeCanvas() {
 
 // Toggle side panel
 function togglePanel() {
+    // Toggle the collapsed class
     sidePanel.classList.toggle('collapsed');
-    
-    // Force a reflow to ensure the transition works properly when uncollapsing
-    if (!sidePanel.classList.contains('collapsed')) {
-        setTimeout(() => {
-            document.querySelector('.panel-content').style.visibility = 'visible';
-        }, 300); // Match this with the CSS transition time
-    }
 }
 
 // Fetch simulation state from API
@@ -200,6 +239,13 @@ async function applyParameters() {
             },
             body: JSON.stringify(params)
         });
+        
+        // Update config with new values
+        if (config && config.simulation) {
+            config.simulation.nb_tanks = params.nb_tanks;
+            config.simulation.max_step_size = params.max_step_size;
+            config.simulation.sigmas = params.sigmas;
+        }
     } catch (error) {
         console.error('Error applying parameters:', error);
     }

@@ -1,0 +1,26 @@
+{
+  "simulation": {
+    "map_x_size": 50,
+    "map_y_size": 50,
+    "nb_tanks": 10,
+    "hq_pos": [5, 45],
+    "targets": [[45, 10], [40, 45]],
+    "altitude_centers": [[45, 20], [30, 10], [40, 20]],
+    "sigmas": [16, 4],
+    "max_step_size": 0.3
+  },
+  "visual": {
+    "tank_radius": 10,
+    "hq_size": 12,
+    "target_size": 8,
+    "grid_size": 20,
+    "colors": {
+      "tank": "#48cae4",
+      "hq": "#ffd700",
+      "target": "#f44336",
+      "link": "rgba(255, 255, 255, 0.4)",
+      "grid": "rgba(255, 255, 255, 0.05)",
+      "background": "#0d1b2a"
+    }
+  }
+}
