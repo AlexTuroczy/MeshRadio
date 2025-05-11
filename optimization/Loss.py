@@ -10,6 +10,7 @@ import networkx as nx
 #  Tunable weights for the composite objective
 # ---------------------------------------------------------------------------
 DIST_WEIGHT = 2#300.0          # encourages spatial dispersion / coverage
+CLOSEST_DIST_COEFF = 10
 CONNECT_WEIGHT = 0 #3  # enforces k‑connectivity robustness
 TARGET_WEIGHT = 1
 HQ_WEIGHT = 100
@@ -47,11 +48,12 @@ def loss(
     threshold = float(env_map.get_tank_radius(0))
 
     dispersion = dist_loss(positions)
+    closest_push_apart = closest_loss(positions)
     connectivity = connectivity_loss(positions, k, threshold, env_map)
     target_seeking = target_seek_loss(positions, env_map.get_all_tank_targets(drop_idx=drop_idx))
     connectivity_to_hq = connectivity_hq_loss(positions, env_map.get_hq_pos())
 
-    return -DIST_WEIGHT * dispersion + CONNECT_WEIGHT * connectivity + TARGET_WEIGHT * target_seeking + HQ_WEIGHT * connectivity_to_hq
+    return -DIST_WEIGHT * dispersion + closest_push_apart * CLOSEST_DIST_COEFF + CONNECT_WEIGHT * connectivity + TARGET_WEIGHT * target_seeking + HQ_WEIGHT * connectivity_to_hq
 
 
 # ---------------------------------------------------------------------------
@@ -66,13 +68,14 @@ def dist_loss(positions: torch.Tensor, exclude_self: bool = True) -> torch.Tenso
         return D[mask].mean()
     return D.mean()
 
+PRIVACY_RADIUS = 5
 
 def closest_loss(positions: torch.Tensor):
     D = torch.cdist(positions, positions, p=2) + torch.eye(positions.shape[0]) * 1e7
     closest_dist, _ = torch.min(D, axis=0)
-    loss = 1 / (1 + closest_dist)**2
+    closest_dist = torch.clamp(PRIVACY_RADIUS - closest_dist, min=0)
+    loss = 0.1 * closest_dist
     return loss.mean()
-
 
 
 def connectivity_loss(
