@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesh Radio Simulation Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard">
+        <header>
+            <div class="logo">
+                <h1>MESH RADIO</h1>
+                <div class="subtitle">TACTICAL NETWORK SIMULATION</div>
+            </div>
+            <div class="controls">
+                <button id="start-btn" class="control-btn"><i class="fas fa-play"></i> START</button>
+                <button id="stop-btn" class="control-btn"><i class="fas fa-pause"></i> PAUSE</button>
+                <button id="reset-btn" class="control-btn"><i class="fas fa-redo"></i> RESET</button>
+            </div>
+            <div class="status">
+                <div class="status-item">
+                    <span class="label">STEP:</span>
+                    <span id="step-counter" class="value">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">TANKS:</span>
+                    <span id="tank-counter" class="value">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">LINKS:</span>
+                    <span id="link-counter" class="value">0</span>
+                </div>
+            </div>
+        </header>
+        
+        <main>
+            <div class="simulation-container">
+                <canvas id="simulation-canvas"></canvas>
+                <div class="overlay-info">
+                    <div class="info-item">
+                        <span class="dot hq-dot"></span>
+                        <span>HQ</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="dot tank-dot"></span>
+                        <span>TANK</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="dot target-dot"></span>
+                        <span>TARGET</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="side-panel">
+                <div class="panel-header">
+                    <h2>PARAMETERS</h2>
+                    <button id="toggle-panel" class="toggle-btn"><i class="fas fa-chevron-left"></i></button>
+                </div>
+                <div class="panel-content">
+                    <div class="param-group">
+                        <h3>SIMULATION</h3>
+                        <div class="param-item">
+                            <label for="nb-tanks">Number of Tanks:</label>
+                            <input type="number" id="nb-tanks" min="1" max="20" value="10">
+                        </div>
+                        <div class="param-item">
+                            <label for="max-step-size">Max Step Size:</label>
+                            <input type="number" id="max-step-size" min="0.1" max="1.0" step="0.1" value="0.3">
+                        </div>
+                    </div>
+                    
+                    <div class="param-group">
+                        <h3>TERRAIN</h3>
+                        <div class="param-item">
+                            <label for="sigma-x">Sigma X:</label>
+                            <input type="number" id="sigma-x" min="1" max="30" value="16">
+                        </div>
+                        <div class="param-item">
+                            <label for="sigma-y">Sigma Y:</label>
+                            <input type="number" id="sigma-y" min="1" max="30" value="4">
+                        </div>
+                    </div>
+                    
+                    <div class="param-group">
+                        <h3>ACTIONS</h3>
+                        <div class="action-item">
+                            <button id="apply-params" class="action-btn">APPLY CHANGES</button>
+                        </div>
+                        <div class="action-item">
+                            <button id="kill-random-tank" class="action-btn">DESTROY RANDOM TANK</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <div class="footer-info">MESH RADIO SIMULATION v1.0</div>
+            <div class="footer-status" id="connection-status">CONNECTED</div>
+        </footer>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

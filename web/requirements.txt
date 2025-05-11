@@ -1,0 +1,8 @@
+flask==2.2.3
+werkzeug==2.2.3
+flask-cors==3.0.10
+numpy
+scipy
+torch
+networkx==2.6.3
+matplotlib

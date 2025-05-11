@@ -1,0 +1,333 @@
+/* Modern Defense Tech Dashboard Styles */
+
+/* Base Styles and Variables */
+:root {
+    --primary-color: #0a2540;
+    --secondary-color: #00b4d8;
+    --accent-color: #48cae4;
+    --background-color: #0d1b2a;
+    --panel-color: #1b263b;
+    --text-color: #e0e1dd;
+    --success-color: #4caf50;
+    --warning-color: #ff9800;
+    --danger-color: #f44336;
+    --grid-color: rgba(255, 255, 255, 0.05);
+    --hq-color: #ffd700;
+    --tank-color: #48cae4;
+    --target-color: #f44336;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Roboto Mono', monospace, sans-serif;
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-size: 14px;
+    line-height: 1.6;
+    overflow: hidden;
+}
+
+/* Dashboard Layout */
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background-color: var(--primary-color);
+    border-bottom: 1px solid var(--secondary-color);
+    height: 80px;
+}
+
+.logo h1 {
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+    color: var(--secondary-color);
+    margin: 0;
+}
+
+.subtitle {
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    color: var(--accent-color);
+    opacity: 0.8;
+}
+
+.controls {
+    display: flex;
+    gap: 1rem;
+}
+
+.control-btn {
+    background-color: var(--panel-color);
+    color: var(--text-color);
+    border: 1px solid var(--secondary-color);
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+}
+
+.control-btn:hover {
+    background-color: var(--secondary-color);
+    color: var(--primary-color);
+}
+
+.status {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.status-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.label {
+    font-size: 0.7rem;
+    color: var(--accent-color);
+    letter-spacing: 1px;
+}
+
+.value {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.simulation-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--background-color);
+}
+
+#simulation-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.overlay-info {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background-color: rgba(10, 37, 64, 0.7);
+    padding: 10px 15px;
+    border-radius: 4px;
+    border: 1px solid var(--secondary-color);
+    display: flex;
+    gap: 15px;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.8rem;
+}
+
+.dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.hq-dot {
+    background-color: var(--hq-color);
+}
+
+.tank-dot {
+    background-color: var(--tank-color);
+}
+
+.target-dot {
+    background-color: var(--target-color);
+}
+
+.side-panel {
+    width: 300px;
+    background-color: var(--panel-color);
+    border-left: 1px solid var(--secondary-color);
+    transition: transform 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.side-panel.collapsed {
+    transform: translateX(calc(100% - 40px));
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--secondary-color);
+}
+
+.panel-header h2 {
+    font-size: 1rem;
+    letter-spacing: 1px;
+    color: var(--secondary-color);
+}
+
+.toggle-btn {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.side-panel.collapsed .toggle-btn {
+    transform: rotate(180deg);
+}
+
+.panel-content {
+    padding: 1rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.param-group {
+    margin-bottom: 1.5rem;
+}
+
+.param-group h3 {
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    color: var(--accent-color);
+    margin-bottom: 0.8rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 0.3rem;
+}
+
+.param-item {
+    margin-bottom: 0.8rem;
+}
+
+.param-item label {
+    display: block;
+    font-size: 0.75rem;
+    margin-bottom: 0.3rem;
+}
+
+.param-item input {
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+
+.action-item {
+    margin-bottom: 0.8rem;
+}
+
+.action-btn {
+    width: 100%;
+    background-color: var(--primary-color);
+    color: var(--text-color);
+    border: 1px solid var(--secondary-color);
+    padding: 0.7rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+}
+
+.action-btn:hover {
+    background-color: var(--secondary-color);
+    color: var(--primary-color);
+}
+
+footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 2rem;
+    background-color: var(--primary-color);
+    border-top: 1px solid var(--secondary-color);
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    height: 40px;
+}
+
+.footer-status {
+    color: var(--success-color);
+}
+
+.footer-status.disconnected {
+    color: var(--danger-color);
+}
+
+/* Grid Background */
+.simulation-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        linear-gradient(var(--grid-color) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+    background-size: 20px 20px;
+    z-index: 0;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1024px) {
+    header {
+        flex-direction: column;
+        height: auto;
+        padding: 1rem;
+    }
+    
+    .controls, .status {
+        margin-top: 1rem;
+    }
+    
+    .side-panel {
+        width: 250px;
+    }
+}
+
+@media (max-width: 768px) {
+    .side-panel {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 10;
+        transform: translateX(100%);
+    }
+    
+    .side-panel.active {
+        transform: translateX(0);
+    }
+}
