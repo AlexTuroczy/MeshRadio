@@ -22,12 +22,12 @@ def update(env_map,k=3):
     # Dummy input and target
 
     # Training loop
-    for epoch in range(10):
+    for epoch in range(1):
         optimizer.zero_grad()
         # ---- clip AFTER the optimiser step, with no_grad ----
 
 
-        loss = Loss.dropout_loss(positions, env_map ,k=k)
+        loss = Loss.dropout_loss(positions, env_map, k=k, max_dropout=1)
         loss.backward()
         optimizer.step()                      # gradient update
 

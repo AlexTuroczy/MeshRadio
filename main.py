@@ -3,7 +3,9 @@ from optimization import Update
 
 import math
 
-MAX_STEP_SIZE = 1
+import random
+
+MAX_STEP_SIZE = .3
 
 CLOSE_START = [(10, 10), (10, 11), (10, 12.3),
                         (10, 9.5), (10.3, 13), (11, 12)]
@@ -11,16 +13,23 @@ SPREAD_OUT = [(10, 10), (15, 60), (30, 80),
                         (60, 20), (80, 75), (45, 45)]
 
 
+SPAWN_AROUND_HQ = [(55,55), (55,53), (55,50), (55, 45), (50,45), (45, 45), (45, 50), (45, 55), (50, 55), (53,55)]
+
+
 def main():
     env = Map(
-        100, 100, 6, (50, 50),
-        init_positions=CLOSE_START,
+        100, 100, 10, (50, 50),
+        init_positions=SPAWN_AROUND_HQ,
         targets=[(90, 10), (10, 90), (80, 50)],
         altitude_centers=[[20, 20], [70, 70], [40, 80]],
         sigmas=[20,20]
     )
 
     env.set_targets_all_tanks(0)
+    env.set_tank_target(0, 2)
+    env.set_tank_target(1, 2)
+    env.set_tank_target(2, 2)
+    env.set_tank_target(3, 2)
 
     # -------- callback that kills a tank in the environment ----------
     def kill_tank(idx: int):
@@ -42,21 +51,27 @@ def main():
         next_positions = Update.update(env)
         next_pos_normed = devide_by_norm(next_positions, prev_pos)
         env.set_pos_all_tanks(next_pos_normed)
-        env = reset_targets(env, target_id=0)
+        env = reset_targets(env)
         viz.render(env.get_state_dict())
         print(f"Iteration {i}")
 
     print("Simulation finished – close the window to exit.")
     viz.hold()
 
-def reset_targets(env, target_id=0):
-    target_pos = env.get_targets_pos()[target_id]
+def reset_targets(env):
+    target_pos = env.get_targets_pos()[0]
+    target_pos2 = env.get_targets_pos()[2]
     hq_pos = env.get_hq_pos()
     for tank in range(env.get_nb_tanks()):
-        if env.get_tank_distance_to_position(tank, target_pos[0], target_pos[1]) < 1:
+        if env.get_tank_distance_to_position(tank, target_pos[0], target_pos[1]) < 2:
             env.set_tank_return_goal(tank)
-        elif env.get_tank_distance_to_position(tank, hq_pos[0], hq_pos[1]) < 1:
-            env.set_tank_target(tank, 0)
+        if env.get_tank_distance_to_position(tank, target_pos2[0], target_pos2[1]) < 2:
+            env.set_tank_return_goal(tank)
+        elif env.get_tank_distance_to_position(tank, hq_pos[0], hq_pos[1]) < 2:
+            if random.randint(0,1) == 0:
+                env.set_tank_target(tank, 0)
+            else:
+                env.set_tank_target(tank, 2)
     return env
 
 def devide_by_norm(next_positions, prev_pos):
@@ -64,7 +79,7 @@ def devide_by_norm(next_positions, prev_pos):
     norm = {k: l2_norm(delta[k]) for k in delta.keys()}
     new_pos_delta = {}
     for k in delta.keys():
-        new_pos_delta[k] = MAX_STEP_SIZE * delta[k] / norm[k] if norm[k] >= 1 else delta[k]
+        new_pos_delta[k] = MAX_STEP_SIZE * delta[k] / norm[k] #if norm[k] >= 1 else delta[k]
     new_pos = {k: prev_pos[k] + new_pos_delta[k] for k in prev_pos.keys()}
     return new_pos
 

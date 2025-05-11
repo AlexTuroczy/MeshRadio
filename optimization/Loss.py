@@ -10,7 +10,7 @@ import networkx as nx
 #  Tunable weights for the composite objective
 # ---------------------------------------------------------------------------
 DIST_WEIGHT = 2#300.0          # encourages spatial dispersion / coverage
-CONNECT_WEIGHT = 3  # enforces k‑connectivity robustness
+CONNECT_WEIGHT = 0 #3  # enforces k‑connectivity robustness
 TARGET_WEIGHT = 1
 HQ_WEIGHT = 100
 
@@ -121,18 +121,18 @@ def target_seek_loss(positions: torch.Tensor, targets: Dict[int, np.ndarray]):
 
     return ((positions - tgts)**2).sum(dim=1).mean()
 
-def dropout_loss(positions, env_map, max_dropout: int = 2, probability_dropout: float = 0.1, k: int = 2) -> torch.Tensor:
+def dropout_loss(positions, env_map, max_dropout: int = 2, probability_dropout: float = 0.05, k: int = 2) -> torch.Tensor:
     """Drops positions and recomputes loss with eliminated nodes"""
 
-    loss_term = 0
+    loss_term = loss(positions, env_map, k)
 
-    for depth in range(max_dropout+1):
+    for depth in range(1,max_dropout+1):
         for idx in adaptive_loops([positions.shape[0] for _ in range(depth)]):
             all_indices = torch.arange(positions.size(0))
             keep_indices = all_indices[~torch.isin(all_indices, idx)]
 
             positions_dropped = positions[keep_indices]
-            loss_term += loss(positions_dropped, env_map, k, drop_idx=[idx[i].item() for i in range(idx.shape[0])]) * (probability_dropout ** depth)
+            loss_term += HQ_WEIGHT * connectivity_hq_loss(positions_dropped, env_map.get_hq_pos()) * (probability_dropout ** (depth))
     
     return loss_term
 
