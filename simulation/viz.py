@@ -47,6 +47,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import matplotlib.offsetbox as ob
 import numpy as np
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 
 # ---------------------------------------------------------------------
 # Global handles & state ------------------------------------------------
@@ -135,17 +136,18 @@ def _on_click(event):
 
 def init_live(
     *,
-    figsize=(7, 7),
-    cmap: str = "terrain",
-    link_colour: str = "white",
+    figsize=(7, 7),    
+    cmap: str = "gist_earth",
+    link_colour: str = "#A9A9A9",
     show_radius: bool = False,
     click_kill_callback: Optional[Callable[[int], None]] = None,
     hit_radius: float = 2.0,
     hit_image_path: Optional[str] = None,
     hit_image_zoom: float = 0.12,
     hit_image_offset: Tuple[float, float] = (2.0, 2.0),
+    tank_image_path: str = "/tankconnected_small_black_on_white_.png"
 ):
-    """Prepare the live, non‑blocking visualisation.
+    """Prepare the live, non‑blocking visualisation.s
 
     Parameters
     ----------
@@ -154,7 +156,18 @@ def init_live(
     hit_image_offset : (dx, dy)
         Offset in *map units* to place the PNG *next to* the tank centre.
     """
-    global _FIG, _AX, _KILL_CB, _HIT_RADIUS, _HIT_IMG, _HIT_IMG_ZOOM, _HIT_IMG_OFFSET
+    global _FIG, _AX, _KILL_CB, _HIT_RADIUS, _HIT_IMG, _HIT_IMG_ZOOM, _HIT_IMG_OFFSET, _TANK_IMG, _TANK_IMG_ZOOM
+
+    # Load tank marker image if provided
+    if tank_image_path is not None:
+        try:
+            _TANK_IMG = mpimg.imread("visuals/" + tank_image_path)
+            _TANK_IMG_ZOOM = 0.05
+        except FileNotFoundError:
+            print(f"[viz] Could not find tank image at '{tank_image_path}'. Falling back to circle.")
+            _TANK_IMG = None
+    else:
+        _TANK_IMG = None
 
     plt.ion()
 
@@ -214,12 +227,14 @@ def render(state: dict):
     # Tanks
     for tank in state["tanks"]:
         x, y = tank["pos"]
-        _AX.scatter(x, y, s=60, edgecolor="k", facecolor="dodgerblue", zorder=3)
-        _AX.text(x + 0.8, y + 0.8, str(tank["idx"]), fontsize=8, color="k")
-        if _AX._viz_show_radius:
-            circ = plt.Circle((x, y), tank["radius"], linestyle=":", linewidth=1,
-                               fill=False, alpha=0.4, zorder=2)
-            _AX.add_patch(circ)
+        if _TANK_IMG is not None:
+            tank_box = OffsetImage(_TANK_IMG, zoom=_TANK_IMG_ZOOM)
+            ab = AnnotationBbox(tank_box, (x, y), frameon=False, zorder=3)
+            _AX.add_artist(ab)
+        else:
+            _AX.scatter(x, y, s=60, edgecolor="black", facecolor="#556B2F", zorder=3)
+
+        # _AX.text(x + 0.8, y + 0.8, str(tank["idx"]), fontsize=8, color="black")
 
     # Links
     for i, j in state["links"]:
@@ -234,12 +249,17 @@ def render(state: dict):
     for tx, ty in state["targets"]:
         _AX.scatter(tx, ty, marker="X", s=80, edgecolor="k", facecolor="red", zorder=4)
 
+    hq_circle = plt.Circle((hqx, hqy), radius=20, edgecolor="#A9A9A9",
+                           linestyle="--", linewidth=2, fill=False, zorder=3)
+    _AX.add_patch(hq_circle)
+
     # Axis cosmetics
     _AX.set_xlim(0, state["map_size"][0])
     _AX.set_ylim(0, state["map_size"][1])
-    _AX.set_xlabel("X (m)")
-    _AX.set_ylabel("Y (m)")
-    _AX.set_title("Battle‑field overview")
+    # _AX.set_xlabel("X (m)")
+    # _AX.set_ylabel("Y (m)")
+    # _AX.set_title("Battle‑field overview")
+    _AX.axis('off')
 
     _FIG.canvas.draw_idle()
     plt.pause(0.001)

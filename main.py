@@ -15,7 +15,7 @@ SPREAD_OUT = [(10, 10), (15, 60), (30, 80),
 
 # Altitude centers
 BASE_IRRELEVANT_ALTS = [[20, 20], [70, 70], [40, 80]]
-TARGET_INTERESTING_ALTS = [[45, 20], [30, 10], [40, 20]]
+TARGET_INTERESTING_ALTS = [[45, 20], [30, 10], [40, 20], [40,45]]
 
 # Sigmas
 GOOD_FOR_SPARSE_SIGS = [20,20]
