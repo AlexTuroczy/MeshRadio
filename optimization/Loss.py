@@ -22,6 +22,7 @@ def loss(
     positions: torch.Tensor,
     env_map,
     k: int = 2,
+    drop_idx=None
 ) -> torch.Tensor:
     """Composite objective for the swarm given the current *trainable* positions.
 
@@ -47,7 +48,7 @@ def loss(
 
     dispersion = dist_loss(positions)
     connectivity = connectivity_loss(positions, k, threshold, env_map)
-    target_seeking = target_seek_loss(positions, env_map.get_all_tank_targets())
+    target_seeking = target_seek_loss(positions, env_map.get_all_tank_targets(drop_idx=drop_idx))
     connectivity_to_hq = connectivity_hq_loss(positions, env_map.get_hq_pos())
 
     return -DIST_WEIGHT * dispersion + CONNECT_WEIGHT * connectivity + TARGET_WEIGHT * target_seeking + HQ_WEIGHT * connectivity_to_hq
@@ -125,13 +126,13 @@ def dropout_loss(positions, env_map, max_dropout: int = 2, probability_dropout: 
 
     loss_term = 0
 
-    for depth in range(max_dropout):
+    for depth in range(max_dropout+1):
         for idx in adaptive_loops([positions.shape[0] for _ in range(depth)]):
             all_indices = torch.arange(positions.size(0))
             keep_indices = all_indices[~torch.isin(all_indices, idx)]
 
             positions_dropped = positions[keep_indices]
-            loss_term += loss(positions_dropped, env_map, k) * (probability_dropout ** depth)
+            loss_term += loss(positions_dropped, env_map, k, drop_idx=[idx[i].item() for i in range(idx.shape[0])]) * (probability_dropout ** depth)
     
     return loss_term
 

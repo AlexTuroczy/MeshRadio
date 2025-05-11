@@ -266,11 +266,15 @@ class Map:
         for node in self.nodes:
             node.set_target(target)
 
-    def get_all_tank_targets(self):
+    def get_all_tank_targets(self, drop_idx=None):
         """ Returns dict of tank ids and target positions """
         target_pos = {}
         for id, node in enumerate(self.nodes):
             target_pos[id] = node.get_target_pos()
+        if drop_idx is not None:
+            for idx in drop_idx:
+                if idx in target_pos:
+                    target_pos.pop(idx)
         return target_pos
 
     # ---------------------------------------------------------------------
