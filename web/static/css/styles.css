@@ -178,6 +178,10 @@ main {
     transform: translateX(calc(100% - 40px));
 }
 
+.side-panel.collapsed .panel-content {
+    visibility: hidden;
+}
+
 .panel-header {
     display: flex;
     justify-content: space-between;
@@ -199,6 +203,7 @@ main {
     cursor: pointer;
     font-size: 1rem;
     transition: transform 0.3s ease;
+    z-index: 10;
 }
 
 .side-panel.collapsed .toggle-btn {

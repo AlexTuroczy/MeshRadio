@@ -27,11 +27,19 @@ const sigmaXInput = document.getElementById('sigma-x');
 const sigmaYInput = document.getElementById('sigma-y');
 
 // Constants
-const TANK_RADIUS = 6;
+const TANK_RADIUS = 10;
 const HQ_SIZE = 12;
 const TARGET_SIZE = 8;
 const GRID_SIZE = 20;
 const BACKGROUND_PATTERN_SIZE = 5;
+
+// Tank image
+const tankImage = new Image();
+tankImage.src = '/static/images/tankconnected.png';
+
+// HQ and target icons (using Font Awesome style)
+const HQ_ICON = 'M';  // Will be drawn as a hexagon
+const TARGET_ICON = 'T';  // Will be drawn as a diamond
 
 // Colors
 const COLORS = {
@@ -82,6 +90,13 @@ function resizeCanvas() {
 // Toggle side panel
 function togglePanel() {
     sidePanel.classList.toggle('collapsed');
+    
+    // Force a reflow to ensure the transition works properly when uncollapsing
+    if (!sidePanel.classList.contains('collapsed')) {
+        setTimeout(() => {
+            document.querySelector('.panel-content').style.visibility = 'visible';
+        }, 300); // Match this with the CSS transition time
+    }
 }
 
 // Fetch simulation state from API
@@ -270,72 +285,86 @@ function render() {
     animationFrameId = requestAnimationFrame(render);
 }
 
-// Draw background pattern of small crosses or dashes
+// Draw background pattern - tactical grid with terrain features
 function drawBackgroundPattern() {
     ctx.fillStyle = COLORS.background;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
+    // Draw grid lines
     ctx.strokeStyle = COLORS.grid;
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 0.5;
     
-    // Draw small crosses pattern
+    // Draw horizontal and vertical grid lines
     for (let x = 0; x < canvas.width; x += GRID_SIZE) {
-        for (let y = 0; y < canvas.height; y += GRID_SIZE) {
-            // Draw a small cross
-            const size = BACKGROUND_PATTERN_SIZE / 2;
-            
-            ctx.beginPath();
-            ctx.moveTo(x - size, y);
-            ctx.lineTo(x + size, y);
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.moveTo(x, y - size);
-            ctx.lineTo(x, y + size);
-            ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+    }
+    
+    for (let y = 0; y < canvas.height; y += GRID_SIZE) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+    }
+    
+    // Add some tactical terrain features (small dots/markers)
+    ctx.fillStyle = COLORS.grid;
+    
+    // Create a sparse pattern of terrain markers
+    for (let x = GRID_SIZE; x < canvas.width; x += GRID_SIZE * 3) {
+        for (let y = GRID_SIZE; y < canvas.height; y += GRID_SIZE * 3) {
+            // Add some randomness to the pattern
+            if (Math.random() > 0.7) {
+                // Draw a small terrain feature (dot or small shape)
+                ctx.beginPath();
+                ctx.arc(x + (Math.random() * GRID_SIZE - GRID_SIZE/2), 
+                         y + (Math.random() * GRID_SIZE - GRID_SIZE/2), 
+                         1, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
     }
 }
 
-// Draw terrain based on altitude
+// Draw terrain features instead of altitude heatmap
 function drawTerrain(scale, offsetX, offsetY) {
-    const altitude = simulationState.altitude;
     const width = simulationState.map_size[0];
     const height = simulationState.map_size[1];
     
-    // Find min and max altitude for normalization
-    let minAlt = Infinity;
-    let maxAlt = -Infinity;
+    // Draw tactical terrain features
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 0.5;
     
-    for (let x = 0; x < width; x++) {
-        for (let y = 0; y < height; y++) {
-            const alt = altitude[x][y];
-            minAlt = Math.min(minAlt, alt);
-            maxAlt = Math.max(maxAlt, alt);
-        }
+    // Draw contour-like lines for a tactical map feel
+    for (let i = 0; i < 10; i++) {
+        const radius = (Math.min(width, height) / 2) * (0.3 + i * 0.07) * scale;
+        const centerX = offsetX + width * scale / 2;
+        const centerY = offsetY + height * scale / 2;
+        
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.stroke();
     }
     
-    // Draw terrain with color based on altitude
-    const cellSize = scale;
+    // Add some tactical markers
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
     
-    for (let x = 0; x < width; x += 5) {
-        for (let y = 0; y < height; y += 5) {
-            const alt = altitude[x][y];
-            const normalizedAlt = (alt - minAlt) / (maxAlt - minAlt);
-            
-            // Get color based on normalized altitude
-            const colorIndex = Math.min(
-                Math.floor(normalizedAlt * COLORS.terrain.length),
-                COLORS.terrain.length - 1
-            );
-            
-            ctx.fillStyle = COLORS.terrain[colorIndex];
-            ctx.fillRect(
-                offsetX + x * scale,
-                offsetY + y * scale,
-                cellSize * 5,
-                cellSize * 5
-            );
+    // Create a sparse pattern of terrain markers
+    const markerSize = 2;
+    for (let x = 0; x < width; x += 10) {
+        for (let y = 0; y < height; y += 10) {
+            // Add some randomness to the pattern
+            if (Math.random() > 0.8) {
+                const markerX = offsetX + x * scale;
+                const markerY = offsetY + y * scale;
+                
+                // Draw a small terrain feature (dot or small shape)
+                ctx.beginPath();
+                ctx.arc(markerX, markerY, markerSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
     }
 }
@@ -371,7 +400,7 @@ function drawLinks(scale, offsetX, offsetY) {
 function drawHQ(scale, offsetX, offsetY) {
     const [x, y] = simulationState.hq;
     
-    // Draw star for HQ
+    // Draw hexagon for HQ (modern military command post symbol)
     ctx.fillStyle = COLORS.hq;
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 1;
@@ -380,7 +409,32 @@ function drawHQ(scale, offsetX, offsetY) {
     const centerY = offsetY + y * scale;
     const size = HQ_SIZE;
     
-    drawStar(centerX, centerY, 5, size, size / 2);
+    drawHexagon(centerX, centerY, size);
+    
+    // Add a small indicator in the center
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, size/4, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+// Helper function to draw a hexagon
+function drawHexagon(cx, cy, size) {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i;
+        const x = cx + size * Math.cos(angle);
+        const y = cy + size * Math.sin(angle);
+        
+        if (i === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
 }
 
 // Draw targets
@@ -393,19 +447,27 @@ function drawTargets(scale, offsetX, offsetY) {
         const centerX = offsetX + x * scale;
         const centerY = offsetY + y * scale;
         
-        // Draw X mark
-        ctx.beginPath();
-        ctx.moveTo(centerX - TARGET_SIZE / 2, centerY - TARGET_SIZE / 2);
-        ctx.lineTo(centerX + TARGET_SIZE / 2, centerY + TARGET_SIZE / 2);
-        ctx.moveTo(centerX + TARGET_SIZE / 2, centerY - TARGET_SIZE / 2);
-        ctx.lineTo(centerX - TARGET_SIZE / 2, centerY + TARGET_SIZE / 2);
-        ctx.stroke();
-        
-        // Draw circle around X
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, TARGET_SIZE, 0, Math.PI * 2);
-        ctx.stroke();
+        // Draw diamond (rhombus) for target
+        drawDiamond(centerX, centerY, TARGET_SIZE);
     }
+}
+
+// Helper function to draw a diamond (rhombus)
+function drawDiamond(cx, cy, size) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - size);
+    ctx.lineTo(cx + size, cy);
+    ctx.lineTo(cx, cy + size);
+    ctx.lineTo(cx - size, cy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    
+    // Add a small indicator in the center
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(cx, cy, size/4, 0, Math.PI * 2);
+    ctx.fill();
 }
 
 // Draw tanks
@@ -415,22 +477,22 @@ function drawTanks(scale, offsetX, offsetY) {
         const centerX = offsetX + x * scale;
         const centerY = offsetY + y * scale;
         
-        // Draw tank circle
+        // Draw tank image
+        const imgSize = TANK_RADIUS * 2;
+        ctx.drawImage(
+            tankImage, 
+            centerX - imgSize/2, 
+            centerY - imgSize/2, 
+            imgSize, 
+            imgSize
+        );
+        
+        // Draw tank ID next to the tank
         ctx.fillStyle = COLORS.tank;
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1;
-        
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, TANK_RADIUS, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        
-        // Draw tank ID
-        ctx.fillStyle = '#000';
-        ctx.font = '10px "Roboto Mono", monospace';
+        ctx.font = 'bold 10px "Roboto Mono", monospace';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(tank.idx.toString(), centerX, centerY);
+        ctx.fillText(tank.idx.toString(), centerX, centerY - imgSize/2 - 8);
     }
 }
 
