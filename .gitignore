@@ -6,3 +6,4 @@ simulation/__pycache__/
 /temp
 .vscode/
 optimization/__pycache__/
+**/__pycache__/*

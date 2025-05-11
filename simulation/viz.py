@@ -63,41 +63,51 @@ _HIT_IMG_OFFSET: Tuple[float, float] = (2.0, 2.0) # dx,dy in map units
 # Internal helper: flashy hit‑marker animation -------------------------
 # ---------------------------------------------------------------------
 
-def _show_hit_marker(x: float, y: float, duration: float = 0.5):
-    """Draw the custom PNG (small, offset) or a red X for *duration* seconds."""
+# ─── overwrite the helper used earlier ─────────────────────────────────
+def _show_hit_marker(x: float, y: float, duration_ms: int = 500):
+    """
+    Draw a temporary hit marker for ~duration_ms milliseconds WITHOUT
+    blocking the GUI or the sim loop.
+    """
     if _AX is None:
         return
 
+    # ── 1. create whichever artist we're using ───────────────────────
     if _HIT_IMG is not None:
-        # Position the image slightly offset from the tank centre
-        offset_x, offset_y = _HIT_IMG_OFFSET
-        imagebox = ob.OffsetImage(_HIT_IMG, zoom=_HIT_IMG_ZOOM)
-        ab = ob.AnnotationBbox(
-            imagebox,
-            (x + offset_x, y + offset_y),  # data coords
-            frameon=False,
-            zorder=6,
-        )
-        _AX.add_artist(ab)
-        _FIG.canvas.draw_idle()
-        plt.pause(duration)
-        ab.remove()
-    else:
-        # Fallback: red X marker right on top of tank
-        marker = _AX.scatter(
-            x,
-            y,
-            marker="x",
-            s=250,
-            linewidths=3,
-            color="red",
-            zorder=6,
-        )
-        _FIG.canvas.draw_idle()
-        plt.pause(duration)
-        marker.remove()
+        dx, dy  = _HIT_IMG_OFFSET
+        img_box = ob.OffsetImage(_HIT_IMG, zoom=_HIT_IMG_ZOOM)
+        artist  = ob.AnnotationBbox(img_box,
+                                    (x + dx, y + dy),
+                                    frameon=False,
+                                    zorder=6)
+        _AX.add_artist(artist)
+    else:                                    # red X fallback
+        artist = _AX.scatter(x, y,
+                             marker="x", s=250, linewidths=3,
+                             color="red", zorder=6)
 
-    _FIG.canvas.draw_idle()
+    _FIG.canvas.draw_idle()                  # show immediately
+
+    # ── 2. schedule its disappearance with a one‑shot Timer ───────────
+    def _hide_artist():
+        # First just make it invisible (always works) …
+        artist.set_visible(False)
+
+        # … then *try* to remove it from the Axes; ignore if unsupported
+        try:
+            artist.remove()                  # PathCollection works
+        except (NotImplementedError, ValueError):
+            # AnnotationBbox in some MPL versions lacks .remove()
+            if artist in _AX.artists:
+                _AX.artists.remove(artist)
+
+        _FIG.canvas.draw_idle()
+
+    t = _FIG.canvas.new_timer(interval=duration_ms)
+    t.single_shot = True
+    t.add_callback(_hide_artist)
+    t.start()
+
 
 # ---------------------------------------------------------------------
 # Internal helper: mouse‑click handler ---------------------------------
