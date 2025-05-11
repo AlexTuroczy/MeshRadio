@@ -5,19 +5,27 @@ import math
 
 MAX_STEP_SIZE = 1
 
+# STARTS
 CLOSE_START = [(10, 10), (10, 11), (10, 12.3),
                         (10, 9.5), (10.3, 13), (11, 12)]
 SPREAD_OUT = [(10, 10), (15, 60), (30, 80),
                         (60, 20), (80, 75), (45, 45)]
 
+# Altitude centers
+BASE_IRRELEVANT_ALTS = [[20, 20], [70, 70], [40, 80]]
+TARGET_INTERESTING_ALTS = [[80, 40], [60, 10], [90, 20]]
+
+# Sigmas
+GOOD_FOR_SPARSE_SIGS = [20,20]
+VALLEYS_SIGS = [16,4]
 
 def main():
     env = Map(
         100, 100, 6, (50, 50),
         init_positions=CLOSE_START,
         targets=[(90, 10), (10, 90), (80, 50)],
-        altitude_centers=[[20, 20], [70, 70], [40, 80]],
-        sigmas=[20,20]
+        altitude_centers=TARGET_INTERESTING_ALTS,
+        sigmas=VALLEYS_SIGS
     )
 
     env.set_targets_all_tanks(0)

@@ -121,7 +121,7 @@ def target_seek_loss(positions: torch.Tensor, targets: Dict[int, np.ndarray]):
 
     return ((positions - tgts)**2).sum(dim=1).mean()
 
-def dropout_loss(positions, env_map, max_dropout: int = 2, probability_dropout: float = 0.1, k: int = 2) -> torch.Tensor:
+def dropout_loss(positions, env_map, max_dropout: int = 1, probability_dropout: float = 0.1, k: int = 2) -> torch.Tensor:
     """Drops positions and recomputes loss with eliminated nodes"""
 
     loss_term = 0
