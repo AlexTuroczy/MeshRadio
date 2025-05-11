@@ -254,6 +254,11 @@ class Map:
             raise Exception("Index out of range")
         self.nodes[tank_idx].set_target(self.targets[target_idx])
 
+    def set_tank_return_goal(self, tank_idx):
+        if tank_idx < 0 or tank_idx >= self.nb_nodes:
+            raise Exception("Index out of range.")
+        self.nodes[tank_idx].set_target(self.hq)
+
     def set_targets_all_tanks(self, target_idx: int):
         if 0 < target_idx or target_idx >= len(self.targets) - 1:
             raise Exception("Index out of range")

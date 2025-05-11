@@ -4,12 +4,15 @@ from typing import Dict
 import torch
 import numpy as np
 
+import networkx as nx
+
 # ---------------------------------------------------------------------------
 #  Tunable weights for the composite objective
 # ---------------------------------------------------------------------------
-DIST_WEIGHT = 1.0          # encourages spatial dispersion / coverage
-CONNECT_WEIGHT = 1.5     # enforces k‑connectivity robustness
-TARGET_WEIGHT = 0.2
+DIST_WEIGHT = 2#300.0          # encourages spatial dispersion / coverage
+CONNECT_WEIGHT = 3  # enforces k‑connectivity robustness
+TARGET_WEIGHT = 1
+HQ_WEIGHT = 100
 
 # ---------------------------------------------------------------------------
 #  Public API
@@ -45,8 +48,9 @@ def loss(
     dispersion = dist_loss(positions)
     connectivity = connectivity_loss(positions, k, threshold, env_map)
     target_seeking = target_seek_loss(positions, env_map.get_all_tank_targets())
+    connectivity_to_hq = connectivity_hq_loss(positions, env_map.get_hq_pos())
 
-    return - DIST_WEIGHT * dispersion + CONNECT_WEIGHT * connectivity + TARGET_WEIGHT * target_seeking
+    return -DIST_WEIGHT * dispersion + CONNECT_WEIGHT * connectivity + TARGET_WEIGHT * target_seeking + HQ_WEIGHT * connectivity_to_hq
 
 
 # ---------------------------------------------------------------------------
@@ -60,6 +64,13 @@ def dist_loss(positions: torch.Tensor, exclude_self: bool = True) -> torch.Tenso
         mask = ~torch.eye(D.size(0), dtype=torch.bool, device=D.device)
         return D[mask].mean()
     return D.mean()
+
+
+def closest_loss(positions: torch.Tensor):
+    D = torch.cdist(positions, positions, p=2) + torch.eye(positions.shape[0]) * 1e7
+    closest_dist, _ = torch.min(D, axis=0)
+    loss = 1 / (1 + closest_dist)**2
+    return loss.mean()
 
 
 
@@ -124,9 +135,6 @@ def dropout_loss(positions, env_map, max_dropout: int = 2, probability_dropout: 
     
     return loss_term
 
-
-
-
 def adaptive_loops(bounds):
     """
     Simulates a dynamic number of nested for loops.
@@ -142,3 +150,92 @@ def adaptive_loops(bounds):
     else:
         for indices in np.ndindex(*bounds):
             yield torch.tensor(indices)
+
+
+def iamclosestinmycc(ccs, node, closest, positions):
+    cc = [cc for cc in ccs if node in cc][0]
+    min_dist = float('inf')
+    best_node = node
+    for c_node in cc:
+        dist_to = dist(positions[closest], positions[c_node])
+        if dist_to < min_dist:
+            min_dist = dist_to
+            best_node = c_node
+
+    return best_node == node
+
+def iamclosestinmycc_to_hq(ccs, node, hq_pos, positions):
+        if ccs == []:
+            return True
+        cc = [cc for cc in ccs if node in cc][0]
+        min_dist = float('inf')
+        best_node = node
+        for c_node in cc:
+            dist_to = dist(positions[c_node], hq_pos)
+            if dist_to < min_dist:
+                min_dist = dist_to
+                best_node = c_node
+
+        return best_node == node
+
+def connectivity_hq_loss(positions, hq_pos):
+    loss = 0
+    online, ccs = online_nodes(positions, hq_pos)
+    mask = torch.isin(torch.arange(positions.shape[0]), torch.tensor(list(online)))
+    mask_out = torch.ones((positions.shape[0], positions.shape[0])) * 1e7
+    mask_out[:, mask] = 0
+    D = torch.cdist(positions, positions, p=2) + mask_out + torch.eye(positions.shape[0]) * 1e7
+
+    for node in range(positions.shape[0]):
+        if not node in online:
+            if len(online) > 0:
+                closest = torch.argmin(D[node])
+                if iamclosestinmycc(ccs, node, closest, positions):
+                    loss += dist(positions[closest], positions[node])
+            else:
+                if iamclosestinmycc_to_hq(ccs, node, hq_pos, positions):
+                    loss += dist(positions[node], hq_pos)
+
+    # dists = []
+    # for node in range(positions.shape[0]):
+    #     dist_to_hq = dist(positions[node], hq_pos)
+    #     # if dist_to_hq < min_dist_to_hq:
+    #     #     min_dist_to_hq = dist_to_hq
+    #     dists.append(dist_to_hq)
+    # dists = sorted(dists)
+    # for i in range(len(dists)):
+    #     loss += 0.1**i * dists[i]
+    return loss
+
+
+def dist(pos1, pos2):
+    if isinstance(pos2, np.ndarray):
+        pos2 = torch.tensor(pos2)
+    return torch.dist(pos1, pos2)
+
+RADIUS = 20
+RADIUS_HQ = 20
+
+def online_nodes(positions, hq_pos):
+    graph = nx.Graph()
+    for i in range(positions.shape[0]):
+        graph.add_node(i)
+
+    hq_id = positions.shape[0]
+
+    graph.add_node(hq_id)
+
+    for i in range(positions.shape[0]):
+        for j in range(positions.shape[0]):
+            if not i == j and dist(positions[i], positions[j]) < RADIUS:
+                graph.add_edge(i, j)
+
+        if dist(positions[i], hq_pos) < RADIUS_HQ:
+            graph.add_edge(i, hq_id)
+
+    connected_components = nx.connected_components(graph)
+    connected_components = [cc for cc in connected_components]
+    hq_connected_component = [comp for comp in connected_components if hq_id in comp][0]
+    hq_connected_component.remove(hq_id)
+    return hq_connected_component, [comp for comp in connected_components if not hq_id in comp]
+    

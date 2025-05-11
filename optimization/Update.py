@@ -16,13 +16,13 @@ def update(env_map,k=3):
         dtype=torch.float32
     )
     positions.requires_grad = True
-    optimizer = torch.optim.SGD([positions], lr=0.1)  # using Stochastic Gradient Descent
+    optimizer = torch.optim.SGD([positions], lr=0.03)  # using Stochastic Gradient Descent
 
     map_bounds ={"x": env_map.x_size, "y": env_map.y_size}
     # Dummy input and target
 
     # Training loop
-    for epoch in range(100):
+    for epoch in range(10):
         optimizer.zero_grad()
         # ---- clip AFTER the optimiser step, with no_grad ----
 
@@ -40,7 +40,7 @@ def update(env_map,k=3):
 
 
         # 2. Clip the gradient norm to avoid exploding gradients
-        torch.nn.utils.clip_grad_norm_([positions], max_norm=0.5)
+        # torch.nn.utils.clip_grad_norm_([positions], max_norm=0.5)
 
     positions = positions.detach().numpy()
     print(positions)
