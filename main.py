@@ -15,29 +15,29 @@ SPREAD_OUT = [(10, 10), (15, 60), (30, 80),
 
 # Altitude centers
 BASE_IRRELEVANT_ALTS = [[20, 20], [70, 70], [40, 80]]
-TARGET_INTERESTING_ALTS = [[80, 40], [60, 10], [90, 20]]
+TARGET_INTERESTING_ALTS = [[45, 20], [30, 10], [40, 20]]
 
 # Sigmas
 GOOD_FOR_SPARSE_SIGS = [20,20]
 VALLEYS_SIGS = [16,4]
 
-SPAWN_AROUND_HQ = [(55,55), (55,53), (55,50), (55, 45), (50,45), (45, 45), (45, 50), (45, 55), (50, 55), (53,55)]
+SPAWN_AROUND_HQ = [(7,42), (7,43), (7,44), (7, 44), (5,43), (8, 46), (8, 47), (9, 47), (9, 44), (9,45)]
 
 
 def main():
     env = Map(
-        100, 100, 10, (50, 50),
+        50, 50, 10, (5, 45),
         init_positions=SPAWN_AROUND_HQ,
-        targets=[(90, 10), (10, 90), (80, 50)],
+        targets=[(45, 10), (40, 45)],
         altitude_centers=TARGET_INTERESTING_ALTS,
         sigmas=VALLEYS_SIGS
     )
 
     env.set_targets_all_tanks(0)
-    env.set_tank_target(0, 2)
-    env.set_tank_target(1, 2)
-    env.set_tank_target(2, 2)
-    env.set_tank_target(3, 2)
+    env.set_tank_target(0, 1)
+    env.set_tank_target(1, 1)
+    env.set_tank_target(2, 1)
+    env.set_tank_target(3, 1)
 
     # -------- callback that kills a tank in the environment ----------
     def kill_tank(idx: int):
@@ -68,7 +68,7 @@ def main():
 
 def reset_targets(env):
     target_pos = env.get_targets_pos()[0]
-    target_pos2 = env.get_targets_pos()[2]
+    target_pos2 = env.get_targets_pos()[1]
     hq_pos = env.get_hq_pos()
     for tank in range(env.get_nb_tanks()):
         if env.get_tank_distance_to_position(tank, target_pos[0], target_pos[1]) < 2:
@@ -79,7 +79,7 @@ def reset_targets(env):
             if random.randint(0,1) == 0:
                 env.set_tank_target(tank, 0)
             else:
-                env.set_tank_target(tank, 2)
+                env.set_tank_target(tank, 1)
     return env
 
 def devide_by_norm(next_positions, prev_pos):
